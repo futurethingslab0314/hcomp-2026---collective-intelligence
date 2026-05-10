@@ -966,38 +966,54 @@ function SponsorsSection({
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsorship tiers')),
   );
 
-  const currentSponsors = {
-    silver: sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('silver')).length > 0
-      ? sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('silver'))
-      : [
-      { 
-        name: "Mohamed bin Zayed University of Artificial Intelligence", 
-        sub: "Institute of Foundation Models",
-        logo: "https://placehold.co/600x300/white/0a0a0a/png?text=MBZUAI+Logo",
-        url: "https://mbzuai.ac.ae/"
-      },
-      { 
-        name: "Artificial Intelligence", 
-        sub: "Elsevier",
-        logo: "https://placehold.co/600x300/white/0a0a0a/png?text=ELSEVIER+AI+Logo",
-        url: "https://www.journals.elsevier.com/artificial-intelligence"
+  const fallbackSponsorLogos = [
+    {
+      name: 'Mohamed bin Zayed University of Artificial Intelligence',
+      sub: 'Institute of Foundation Models',
+      logo: 'https://placehold.co/600x300/white/0a0a0a/png?text=MBZUAI+Logo',
+      url: 'https://mbzuai.ac.ae/',
+      group: 'silver',
+    },
+    {
+      name: 'Artificial Intelligence',
+      sub: 'Elsevier',
+      logo: 'https://placehold.co/600x300/white/0a0a0a/png?text=ELSEVIER+AI+Logo',
+      url: 'https://www.journals.elsevier.com/artificial-intelligence',
+      group: 'silver',
+    },
+    {
+      name: 'SIGWEB',
+      sub: '',
+      logo: 'https://placehold.co/400x200/white/0a0a0a/png?text=SIGWEB+Logo',
+      url: 'https://www.sigweb.org/',
+      group: 'sponsoring societies',
+    },
+    {
+      name: 'SIGCHI',
+      sub: '',
+      logo: 'https://placehold.co/400x200/white/0a0a0a/png?text=SIGCHI+Logo',
+      url: 'https://sigchi.org/',
+      group: 'sponsoring societies',
+    },
+  ];
+  const groupedSponsorLogos = (sponsorLogoItems.length > 0 ? sponsorLogoItems : fallbackSponsorLogos).reduce<Record<string, typeof fallbackSponsorLogos>>(
+    (acc, item) => {
+      const group = item.group.trim().toLowerCase() || 'general';
+      if (!acc[group]) {
+        acc[group] = [];
       }
-    ],
-    societies: sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('societ')).length > 0
-      ? sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('societ'))
-      : [
-      { 
-        name: "SIGWEB",
-        logo: "https://placehold.co/400x200/white/0a0a0a/png?text=SIGWEB+Logo",
-        url: "https://www.sigweb.org/"
-      },
-      { 
-        name: "SIGCHI",
-        logo: "https://placehold.co/400x200/white/0a0a0a/png?text=SIGCHI+Logo",
-        url: "https://sigchi.org/"
-      }
-    ]
-  };
+      acc[group].push(item as (typeof fallbackSponsorLogos)[number]);
+      return acc;
+    },
+    {},
+  );
+  const sponsorLogoSections = [
+    { key: 'platinum', title: 'Platinum Sponsors', accent: 'text-brand-teal' },
+    { key: 'gold', title: 'Gold Sponsors', accent: 'text-[#ffe7a6]' },
+    { key: 'silver', title: 'Silver Sponsors', accent: 'text-brand-blue' },
+    { key: 'bronze', title: 'Bronze Sponsors', accent: 'text-orange-400' },
+    { key: 'sponsoring societies', title: 'Sponsoring Societies', accent: 'text-brand-purple' },
+  ].filter((section) => (groupedSponsorLogos[section.key] ?? []).length > 0);
   const usesRegistrySponsorTiers = sponsorTierRows.length > 0;
   const tiers = usesRegistrySponsorTiers ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
   const marqueePhotos = provenCommunityItems.length > 0
@@ -1030,65 +1046,46 @@ function SponsorsSection({
 
         {/* Current Sponsors Display (Moved to top) */}
         <div className="py-12 border-y border-white/5 space-y-16">
-          <div className="text-center space-y-10">
-             <div className="text-[10px] uppercase tracking-[0.4em] font-bold text-brand-teal">Currently obtained Silver Sponsors</div>
-             <div className="flex flex-wrap justify-center gap-8 md:gap-12">
-               {currentSponsors.silver.map((s, i) => (
-                 <motion.a 
-                  key={i} 
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0, y: 10 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  whileHover={{ scale: 1.02 }}
-                  transition={{ delay: i * 0.1 }}
-                  className="group flex flex-col items-center gap-4 max-w-[300px]"
-                >
-                   <div className="w-full aspect-[2/1] bg-white rounded-2xl flex items-center justify-center p-6 overflow-hidden shadow-xl shadow-brand-teal/5 group-hover:shadow-brand-teal/20 transition-all border border-white/10">
-                      <img 
-                        src={s.logo} 
-                        alt={s.name} 
-                        className="w-full h-full object-contain filter grayscale group-hover:grayscale-0 transition-all duration-500" 
-                        referrerPolicy="no-referrer"
-                      />
-                   </div>
-                   <div className="text-center">
-                    <div className="text-sm font-bold text-white/90 group-hover:text-brand-teal transition-colors leading-tight">{s.name}</div>
-                    {s.sub && <div className="text-[9px] uppercase tracking-widest font-bold text-white/30 mt-1">{s.sub}</div>}
-                   </div>
-                 </motion.a>
-               ))}
-             </div>
-          </div>
+          {sponsorLogoSections.map((section) => {
+            const items = groupedSponsorLogos[section.key] ?? [];
+            const isSocieties = section.key === 'sponsoring societies';
 
-          <div className="text-center space-y-10">
-             <div className="text-[10px] uppercase tracking-[0.4em] font-bold text-brand-blue">Sponsoring Societies</div>
-             <div className="flex flex-wrap justify-center gap-8 md:gap-12 items-center">
-               {currentSponsors.societies.map((s, i) => (
-                 <motion.a 
-                  key={i}
-                  href={s.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  initial={{ opacity: 0 }}
-                  whileInView={{ opacity: 1 }}
-                  whileHover={{ scale: 1.05 }}
-                  className="group flex flex-col items-center gap-4 max-w-[200px]"
-                >
-                   <div className="w-full aspect-[2/1] bg-white/5 rounded-xl border border-white/10 flex items-center justify-center p-6 hover:bg-white transition-all overflow-hidden group">
-                      <img 
-                        src={s.logo} 
-                        alt={s.name} 
-                        className="w-full h-full object-contain filter brightness-0 invert opacity-40 group-hover:opacity-100 group-hover:brightness-100 group-hover:invert-0 transition-all duration-300" 
-                        referrerPolicy="no-referrer"
-                      />
-                   </div>
-                   <div className="text-[10px] font-bold text-white/40 group-hover:text-white uppercase tracking-widest">{s.name}</div>
-                 </motion.a>
-               ))}
-             </div>
-          </div>
+            return (
+              <div key={section.key} className="text-center space-y-10">
+                <div className={`text-[10px] uppercase tracking-[0.4em] font-bold ${section.accent}`}>
+                  {section.title}
+                </div>
+                <div className="flex flex-wrap justify-center gap-8 md:gap-12 items-start">
+                  {items.map((s, i) => (
+                    <motion.a
+                      key={`${section.key}-${i}`}
+                      href={s.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      initial={{ opacity: 0, y: 10 }}
+                      whileInView={{ opacity: 1, y: 0 }}
+                      whileHover={{ scale: 1.02 }}
+                      transition={{ delay: i * 0.08 }}
+                      className="group flex flex-col items-center gap-4 w-[260px]"
+                    >
+                      <div className={`w-[260px] h-[150px] rounded-2xl border border-white/10 flex items-center justify-center p-6 overflow-hidden transition-all ${isSocieties ? 'bg-white shadow-xl shadow-white/5' : 'bg-white shadow-xl shadow-brand-teal/5 group-hover:shadow-brand-teal/20'}`}>
+                        <img
+                          src={s.logo}
+                          alt={s.name}
+                          className={`w-full h-full object-contain transition-all duration-500 ${isSocieties ? 'opacity-100' : 'filter grayscale group-hover:grayscale-0'}`}
+                          referrerPolicy="no-referrer"
+                        />
+                      </div>
+                      <div className="text-center">
+                        <div className="text-sm font-bold text-white/90 group-hover:text-brand-teal transition-colors leading-tight">{s.name}</div>
+                        {s.sub ? <div className="text-[9px] uppercase tracking-widest font-bold text-white/30 mt-1">{s.sub}</div> : null}
+                      </div>
+                    </motion.a>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-12">
@@ -1352,9 +1349,6 @@ function SponsorsSection({
           <h3 className="text-3xl md:text-5xl font-display font-bold relative z-10">
             Join us in shaping the future of AI, work, and collective intelligence!
           </h3>
-          <button className="px-12 py-5 bg-white text-black rounded-full font-extrabold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all relative z-10 shadow-2xl">
-            Download Sponsorship Details
-          </button>
         </div>
       </div>
     </div>

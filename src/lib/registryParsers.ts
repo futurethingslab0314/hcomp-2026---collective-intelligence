@@ -228,7 +228,7 @@ export function parseCommunityPhotos(records: DatabaseRecord[]) {
     .map((record) => ({
       name: getStringField(record, ['name', 'title']),
       caption: getStringField(record, ['caption', 'description', 'subtitle', 'name', 'title']),
-      image: getStringField(record, ['image', 'photo', 'photos', 'logo']),
+      image: getStringField(record, ['files & media', 'files and media', 'image', 'photo', 'photos', 'logo']),
       url: getStringField(record, ['url', 'link', 'website']),
     }))
     .filter((item) => item.image || item.name || item.caption);
