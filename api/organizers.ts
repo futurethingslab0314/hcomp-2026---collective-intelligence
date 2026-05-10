@@ -1,4 +1,5 @@
-import { getFileUrl, getPlainText, json, queryDatabase } from './_lib/notion';
+import { getFileUrl, getPlainText, json, queryDatabaseById } from './_lib/notion';
+import { getRegistrySourceId } from './_lib/registry';
 
 type OrganizerItem = {
   id: string;
@@ -18,7 +19,8 @@ function normalizeConference(value: string) {
 
 export default async function handler(_req: any, res: any) {
   try {
-    const pages = await queryDatabase('NOTION_ORGANIZER_DATABASE_ID');
+    const databaseId = await getRegistrySourceId('organizer page', 'organizers');
+    const pages = await queryDatabaseById(databaseId);
 
     const people = pages
       .map((page) => {

@@ -24,6 +24,7 @@ type NotionPropertyValue = {
   date?: { start?: string | null; end?: string | null } | null;
   files?: NotionFile[];
   status?: { name?: string | null } | null;
+  checkbox?: boolean | null;
   formula?:
     | {
         type?: string;
@@ -69,8 +70,7 @@ async function notionFetch(path: string, init?: RequestInit) {
   return response.json();
 }
 
-export async function queryDatabase(databaseIdEnvName: string) {
-  const databaseId = getEnv(databaseIdEnvName);
+export async function queryDatabaseById(databaseId: string) {
   const pages: NotionPage[] = [];
   let hasMore = true;
   let startCursor: string | undefined;
@@ -88,6 +88,11 @@ export async function queryDatabase(databaseIdEnvName: string) {
   }
 
   return pages;
+}
+
+export async function queryDatabase(databaseIdEnvName: string) {
+  const databaseId = getEnv(databaseIdEnvName);
+  return queryDatabaseById(databaseId);
 }
 
 export function getPlainText(
@@ -140,6 +145,10 @@ export function getPlainText(
     return property.number != null ? String(property.number) : '';
   }
 
+  if (property.type === 'checkbox') {
+    return property.checkbox ? 'true' : 'false';
+  }
+
   if (property.type === 'formula') {
     if (property.formula?.type === 'string') return property.formula.string?.trim?.() ?? '';
     if (property.formula?.type === 'number') return property.formula.number != null ? String(property.formula.number) : '';
@@ -179,6 +188,17 @@ export function getDateValue(
   return getPlainText(properties, propertyName);
 }
 
+export function getCheckboxValue(
+  properties: Record<string, NotionPropertyValue> | undefined,
+  propertyName: string,
+) {
+  const property = properties?.[propertyName];
+  if (property?.type === 'checkbox') {
+    return Boolean(property.checkbox);
+  }
+  return getPlainText(properties, propertyName) === 'true';
+}
+
 export function getFileUrl(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
@@ -193,6 +213,45 @@ export function getFileUrl(
   if (file.type === 'external') return file.external?.url ?? '';
   if (file.type === 'file') return file.file?.url ?? '';
   return '';
+}
+
+export function getFileUrls(
+  properties: Record<string, NotionPropertyValue> | undefined,
+  propertyName: string,
+) {
+  const property = properties?.[propertyName];
+  if (property?.type !== 'files') {
+    const plainText = getPlainText(properties, propertyName);
+    return plainText ? [plainText] : [];
+  }
+
+  return (property.files ?? [])
+    .map((file) => {
+      if (file?.type === 'external') return file.external?.url ?? '';
+      if (file?.type === 'file') return file.file?.url ?? '';
+      return '';
+    })
+    .filter(Boolean);
+}
+
+export async function listBlockChildren(blockId: string) {
+  const blocks: any[] = [];
+  let hasMore = true;
+  let startCursor: string | undefined;
+
+  while (hasMore) {
+    const searchParams = new URLSearchParams({ page_size: '100' });
+    if (startCursor) {
+      searchParams.set('start_cursor', startCursor);
+    }
+
+    const data = await notionFetch(`/blocks/${blockId}/children?${searchParams.toString()}`);
+    blocks.push(...(data.results ?? []));
+    hasMore = Boolean(data.has_more);
+    startCursor = data.next_cursor ?? undefined;
+  }
+
+  return blocks;
 }
 
 export function json(res: any, status: number, body: unknown) {

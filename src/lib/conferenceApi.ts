@@ -28,6 +28,69 @@ export type OrganizerGroups = {
   ci: Organizer[];
 };
 
+export type RichTextSpan = {
+  text: string;
+  href?: string;
+  bold?: boolean;
+  italic?: boolean;
+  strikethrough?: boolean;
+  underline?: boolean;
+  code?: boolean;
+};
+
+export type ContentBlock =
+  | { type: 'paragraph'; richText: RichTextSpan[] }
+  | { type: 'heading_1'; richText: RichTextSpan[] }
+  | { type: 'heading_2'; richText: RichTextSpan[] }
+  | { type: 'heading_3'; richText: RichTextSpan[] }
+  | { type: 'quote'; richText: RichTextSpan[] }
+  | { type: 'callout'; richText: RichTextSpan[] }
+  | { type: 'divider' }
+  | { type: 'table'; rows: RichTextSpan[][][] }
+  | { type: 'bulleted_list'; items: Array<{ type: 'bulleted_list_item'; richText: RichTextSpan[]; children?: ContentBlock[] }> }
+  | { type: 'numbered_list'; items: Array<{ type: 'numbered_list_item'; richText: RichTextSpan[]; children?: ContentBlock[] }> };
+
+export type DatabaseRecordValue = string | string[] | number | boolean | null;
+
+export type DatabaseRecord = {
+  id: string;
+  fields: Record<string, DatabaseRecordValue>;
+};
+
+export type RegistryEntry =
+  | {
+      pageKey: string;
+      sectionKey: string;
+      sourceType: 'database';
+      sourceId: string;
+      enabled: boolean;
+      description: string;
+      sourceUrl: string;
+      records: DatabaseRecord[];
+    }
+  | {
+      pageKey: string;
+      sectionKey: string;
+      sourceType: 'page';
+      sourceId: string;
+      enabled: boolean;
+      description: string;
+      sourceUrl: string;
+      blocks: ContentBlock[];
+    }
+  | {
+      pageKey: string;
+      sectionKey: string;
+      sourceType: 'inline';
+      sourceId: string;
+      enabled: boolean;
+      description: string;
+      sourceUrl: string;
+      text: string;
+    };
+
+export type RegistryContent = Record<string, Record<string, RegistryEntry>>;
+
 function normalizeProgramDays(days: any[]): ProgramDay[] {
   return days.map((day, index) => ({
     day: Number(day.day) || index + 1,
@@ -81,4 +144,9 @@ export async function fetchProgramDays() {
 export async function fetchOrganizers() {
   const payload = await fetchJson('/api/organizers');
   return normalizeOrganizers(payload);
+}
+
+export async function fetchRegistryContent() {
+  const payload = await fetchJson('/api/content');
+  return (payload?.registry ?? {}) as RegistryContent;
 }

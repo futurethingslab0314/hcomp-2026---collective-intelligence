@@ -18,12 +18,26 @@ import {
   Layers
 } from 'lucide-react';
 import BackgroundCanvas from './components/BackgroundCanvas';
+import NotionContentRenderer from './components/NotionContentRenderer';
 import { CONFERENCE_CONTENT } from './constants/content';
 import { PAST_HCOMP_MEETINGS, PAST_REPORTS, PAST_CI_MEETINGS } from './constants/pastMeetings';
 import { CONFERENCE_PHOTOS } from './constants/assets';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
-import { fetchOrganizers, fetchProgramDays, type OrganizerGroups, type ProgramDay } from './lib/conferenceApi';
+import { fetchRegistryContent, type OrganizerGroups, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
+import {
+  getDatabaseRecords,
+  getPageBlocks,
+  getRegistryEntry,
+  parseAccommodations,
+  parseDeadlines,
+  parseOrganizers,
+  parseProgram,
+  parseSponsorLogos,
+  parseSponsorTierRows,
+  parseTransportation,
+  parseVenueLocations,
+} from './lib/registryParsers';
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
 
@@ -33,6 +47,8 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAwardYear, setSelectedAwardYear] = useState<number | null>(null);
   const [activePastMeetingTab, setActivePastMeetingTab] = useState<'hcomp' | 'ci'>('hcomp');
+  const [registryContent, setRegistryContent] = useState<RegistryContent | null>(null);
+  const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
 
   // Apply colors to CSS variables
   useEffect(() => {
@@ -62,6 +78,31 @@ export default function App() {
     };
     window.addEventListener('switch-section', handleSwitchSection);
     return () => window.removeEventListener('switch-section', handleSwitchSection);
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadRegistry = async () => {
+      try {
+        const content = await fetchRegistryContent();
+        if (isMounted && Object.keys(content).length > 0) {
+          setRegistryContent(content);
+        }
+      } catch (error) {
+        console.error('Failed to load content registry from Notion API.', error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingRegistry(false);
+        }
+      }
+    };
+
+    void loadRegistry();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const sections = [
@@ -181,13 +222,13 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {activeSection === 'home' && <AboutLandingSection />}
-            {activeSection === 'submission' && <SubmissionSection />}
-            {activeSection === 'venue' && <VenueSection />}
-            {activeSection === 'program' && <ProgramSection />}
-            {activeSection === 'organization' && <OrgSection />}
-            {activeSection === 'sponsors' && <SponsorsSection />}
-            {activeSection === 'coc' && <CodeOfConductSection />}
+            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} />}
+            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'organization' && <OrgSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'coc' && <CodeOfConductSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'past-meetings' && (
               <PastMeetingsSection 
                 onShowAwards={setSelectedAwardYear} 
@@ -559,7 +600,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false }: { onShowAwards: 
   );
 }
 
-function AboutLandingSection() {
+function AboutLandingSection({ registryContent: _registryContent }: { registryContent: RegistryContent | null }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
@@ -872,8 +913,14 @@ function AboutLandingSection() {
   );
 }
 
-function SponsorsSection() {
-  const tiers = [
+function SponsorsSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
+  const fallbackTiers = [
     { name: "Platinum", price: "10,000+", perks: [
       { feature: "Complimentary Registrations", platinum: "3", gold: "1", silver: "×", bronze: "×" },
       { feature: "Named Event or Session", platinum: "✓", gold: "×", silver: "×", bronze: "×" },
@@ -884,9 +931,18 @@ function SponsorsSection() {
       { feature: "Branding Visibility (Website/Signage)", platinum: "✓", gold: "✓", silver: "✓", bronze: "✓" },
     ] }
   ];
+  const callForSponsorBlocks = getPageBlocks(getRegistryEntry(registryContent, 'sponsor page', 'call for sponsor'));
+  const sponsorLogoItems = parseSponsorLogos(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsor logo')),
+  );
+  const sponsorTierRows = parseSponsorTierRows(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsorship tiers')),
+  );
 
   const currentSponsors = {
-    silver: [
+    silver: sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('silver')).length > 0
+      ? sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('silver'))
+      : [
       { 
         name: "Mohamed bin Zayed University of Artificial Intelligence", 
         sub: "Institute of Foundation Models",
@@ -900,7 +956,9 @@ function SponsorsSection() {
         url: "https://www.journals.elsevier.com/artificial-intelligence"
       }
     ],
-    societies: [
+    societies: sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('societ')).length > 0
+      ? sponsorLogoItems.filter((item) => item.group.toLowerCase().includes('societ'))
+      : [
       { 
         name: "SIGWEB",
         logo: "https://placehold.co/400x200/white/0a0a0a/png?text=SIGWEB+Logo",
@@ -913,6 +971,7 @@ function SponsorsSection() {
       }
     ]
   };
+  const tiers = sponsorTierRows.length > 0 ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
 
   return (
     <div className="space-y-24 pb-32">
@@ -920,9 +979,18 @@ function SponsorsSection() {
       <div className="space-y-8">
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold">Call for Sponsors</h2>
-          <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            The 2026 ACM Conference on Human-AI Complementarity and Alignment (HCOMP 2026) will be held from September 27-30, 2026 at the Virginia Tech Institute for Advanced Computing near Washington, DC, USA, and will be proudly co-located with Collective Intelligence (CI) 2026.
-          </p>
+          {callForSponsorBlocks.length > 0 ? (
+            <div className="max-w-4xl">
+              <NotionContentRenderer blocks={callForSponsorBlocks} />
+            </div>
+          ) : (
+            <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
+              The 2026 ACM Conference on Human-AI Complementarity and Alignment (HCOMP 2026) will be held from September 27-30, 2026 at the Virginia Tech Institute for Advanced Computing near Washington, DC, USA, and will be proudly co-located with Collective Intelligence (CI) 2026.
+            </p>
+          )}
+          {isLoadingRegistry ? (
+            <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+          ) : null}
         </div>
 
         {/* Current Sponsors Display (Moved to top) */}
@@ -1236,8 +1304,35 @@ function SponsorsSection() {
   );
 }
 
-function CodeOfConductSection() {
+function CodeOfConductSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
   const { codeOfConduct } = CONFERENCE_CONTENT;
+  const pageBlocks = getPageBlocks(getRegistryEntry(registryContent, 'code of conduct', 'code of conduct'));
+
+  if (pageBlocks.length > 0) {
+    return (
+      <div className="space-y-24 pb-32">
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-5xl font-display font-bold">Code of Conduct</h2>
+            {isLoadingRegistry ? (
+              <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="max-w-5xl">
+          <NotionContentRenderer blocks={pageBlocks} />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-24 pb-32">
       <div className="space-y-8">
@@ -1294,11 +1389,27 @@ function CodeOfConductSection() {
   );
 }
 
-function SubmissionSection() {
+function SubmissionSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
   const { cfpDetails, about, deadlines } = CONFERENCE_CONTENT;
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
   const [activeTopicTrack, setActiveTopicTrack] = useState<'ci' | 'hcomp'>('hcomp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const generalInstructionBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'general instructions'));
+  const papersAndTalksBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'papers and talks'));
+  const postersAndDemosBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'poster and demos'));
+  const doctoralConsortiumBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'doctoral consortium'));
+  const workshopsBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'workshops'));
+  const crowdcampBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'crowdcamp'));
+  const importantDateRecords = parseDeadlines(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'home page', 'important dates')),
+  );
+  const submissionDeadlines = importantDateRecords.length > 0 ? importantDateRecords : deadlines;
 
   const tabs = [
     { id: 'general', label: 'Instructions' },
@@ -1321,6 +1432,9 @@ function SubmissionSection() {
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
             The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—are intended to accommodate the different norms and requirements across the diverse fields represented in the Collective Intelligence and HCOMP communities.
           </p>
+          {isLoadingRegistry ? (
+            <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+          ) : null}
         </div>
       </div>
 
@@ -1474,42 +1588,48 @@ function SubmissionSection() {
               </div>
 
               {/* Submission Templates */}
-              <div className="space-y-10">
-                <h4 className="text-xl font-bold">Submission Templates</h4>
-                <div className="space-y-6 max-w-4xl">
-                  <p className="text-white/60 font-light leading-relaxed">
-                    All submissions should use one of the following templates and must be converted to PDF at the time of submission. All authors should submit manuscripts for review in a single column format.
-                  </p>
-                  <div className="flex flex-wrap gap-4">
-                    <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">Word Template</button>
-                    <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">LaTex Template</button>
+              {generalInstructionBlocks.length > 0 ? (
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={generalInstructionBlocks} />
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-10">
+                    <h4 className="text-xl font-bold">Submission Templates</h4>
+                    <div className="space-y-6 max-w-4xl">
+                      <p className="text-white/60 font-light leading-relaxed">
+                        All submissions should use one of the following templates and must be converted to PDF at the time of submission. All authors should submit manuscripts for review in a single column format.
+                      </p>
+                      <div className="flex flex-wrap gap-4">
+                        <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">Word Template</button>
+                        <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">LaTex Template</button>
+                      </div>
+                      <div className="space-y-4 text-sm text-white/50 leading-relaxed font-light mt-8">
+                        <p>For the Word Template, follow the embedded instructions to apply the paragraph styles to your various text elements.</p>
+                        <p>
+                          To use the LaTex Template within Overleaf, select New Project -&gt; Upload Project and select the .zip file downloaded from the link above. Please use the "sigconf" proceedings template to prepare your manuscript (see sample-sigconf.tex in the samples folder). On the first active line of the Code or Visual Text Editor, replace <code className="bg-white/10 px-1 rounded text-white">\documentclass[sigconf]{'{'}acmart{'}'}</code> with <code className="bg-white/10 px-1 rounded text-white">\documentclass[manuscript]{'{'}acmart{'}'}</code> to create a single-column format.
+                        </p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="space-y-4 text-sm text-white/50 leading-relaxed font-light mt-8">
-                    <p>For the Word Template, follow the embedded instructions to apply the paragraph styles to your various text elements.</p>
-                    <p>
-                      To use the LaTex Template within Overleaf, select New Project -&gt; Upload Project and select the .zip file downloaded from the link above. Please use the "sigconf" proceedings template to prepare your manuscript (see sample-sigconf.tex in the samples folder). On the first active line of the Code or Visual Text Editor, replace <code className="bg-white/10 px-1 rounded text-white">\documentclass[sigconf]{'{'}acmart{'}'}</code> with <code className="bg-white/10 px-1 rounded text-white">\documentclass[manuscript]{'{'}acmart{'}'}</code> to create a single-column format.
-                    </p>
+
+                  <div className="space-y-8">
+                    <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
+                    <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
+                      <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP 2026 employ the following policy on the use of Large Language Models in authoring submissions.</p>
+                      <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
+                      <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* LLM Policy */}
-              <div className="space-y-8">
-                <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
-                <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                  <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP 2026 employ the following policy on the use of Large Language Models in authoring submissions.</p>
-                  <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
-                  <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
-                </div>
-              </div>
-
-              {/* Preprints Policy */}
-              <div className="space-y-8">
-                <h4 className="text-xl font-bold">Preprints Policy</h4>
-                <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                  <p>We do not prohibit authors from posting preprints of their work on platforms such as SSRN or arXiv either before or during review by the conference. However, to maintain the integrity of the double-blind peer review, we ask that authors refrain from publicizing the research on social media or discussing it with the press until the review process is complete.</p>
-                </div>
-              </div>
+                  <div className="space-y-8">
+                    <h4 className="text-xl font-bold">Preprints Policy</h4>
+                    <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
+                      <p>We do not prohibit authors from posting preprints of their work on platforms such as SSRN or arXiv either before or during review by the conference. However, to maintain the integrity of the double-blind peer review, we ask that authors refrain from publicizing the research on social media or discussing it with the press until the review process is complete.</p>
+                    </div>
+                  </div>
+                </>
+              )}
             </section>
           )}
 
@@ -1520,7 +1640,7 @@ function SubmissionSection() {
                 <div className="h-px flex-1 bg-white/10" />
               </div>
               <div className="grid grid-cols-1 gap-4">
-                {deadlines.map((item: any, i: number) => (
+                {submissionDeadlines.map((item: any, i: number) => (
                   <motion.div
                     key={i}
                     initial={{ opacity: 0, x: -20 }}
@@ -1549,108 +1669,198 @@ function SubmissionSection() {
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
-              {/* Desktop Table */}
-              <div className="hidden md:block glass rounded-[2rem] overflow-hidden border border-white/10">
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-brand-purple/20 border-b border-white/10">
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Option</th>
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Track</th>
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Max Words</th>
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Archival?</th>
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Review</th>
-                        <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Publication</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-white/5">
-                      {cfpDetails.table.map((row: any, i: number) => (
-                        <tr key={i} className="hover:bg-white/5 transition-colors">
-                          <td className="p-6 align-top font-bold text-sm">{row.option}</td>
-                          <td className="p-6 align-top text-xs text-white/70">{row.track}</td>
-                          <td className="p-6 align-top text-xs text-white/70">{row.wordCount}</td>
-                          <td className="p-6 align-top text-xs text-white/70 font-serif italic">{row.archival}</td>
-                          <td className="p-6 align-top text-xs text-white/70">{row.review}</td>
-                          <td className="p-6 align-top text-[10px] text-white/50">{row.published}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+              {papersAndTalksBlocks.length > 0 ? (
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={papersAndTalksBlocks} />
                 </div>
-              </div>
-
-              {/* Mobile Card List */}
-              <div className="md:hidden space-y-4">
-                {cfpDetails.table.map((row: any, i: number) => (
-                  <div key={i} className="p-6 glass rounded-2xl border border-white/10 space-y-6">
-                    <div className="flex justify-between items-start gap-4">
-                      <div className="space-y-1">
-                        <div className="text-[10px] text-brand-purple uppercase tracking-widest font-bold">{row.track}</div>
-                        <h4 className="text-lg font-bold">{row.option}</h4>
-                      </div>
-                      <div className="bg-white/10 px-3 py-1 rounded-lg text-[9px] font-bold uppercase text-white/60">
-                        {row.archival}
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4 text-xs">
-                      <div className="space-y-2">
-                        <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Limit</div>
-                        <div className="text-white/80">{row.wordCount}</div>
-                      </div>
-                      <div className="space-y-2">
-                        <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Review</div>
-                        <div className="text-white/80">{row.review}</div>
-                      </div>
-                    </div>
-
-                    <div className="space-y-2 pt-4 border-t border-white/5">
-                      <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Publication</div>
-                      <div className="text-[11px] text-white/60 leading-relaxed italic">{row.published}</div>
+              ) : (
+                <>
+                  <div className="hidden md:block glass rounded-[2rem] overflow-hidden border border-white/10">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse">
+                        <thead>
+                          <tr className="bg-brand-purple/20 border-b border-white/10">
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Option</th>
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Track</th>
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Max Words</th>
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Archival?</th>
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Review</th>
+                            <th className="p-6 text-[9px] uppercase tracking-widest font-bold">Publication</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-white/5">
+                          {cfpDetails.table.map((row: any, i: number) => (
+                            <tr key={i} className="hover:bg-white/5 transition-colors">
+                              <td className="p-6 align-top font-bold text-sm">{row.option}</td>
+                              <td className="p-6 align-top text-xs text-white/70">{row.track}</td>
+                              <td className="p-6 align-top text-xs text-white/70">{row.wordCount}</td>
+                              <td className="p-6 align-top text-xs text-white/70 font-serif italic">{row.archival}</td>
+                              <td className="p-6 align-top text-xs text-white/70">{row.review}</td>
+                              <td className="p-6 align-top text-[10px] text-white/50">{row.published}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
-                ))}
-              </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-                <div className="space-y-10">
-                  {cfpDetails.sections.map((section: any, i: number) => (
-                    <div key={i} className="space-y-4">
-                      <h4 className="font-bold text-white/90 underline decoration-white/10 underline-offset-4">{section.title}</h4>
-                      {section.content && <p className="text-sm text-white/60 font-light leading-relaxed">{section.content}</p>}
-                      {section.subsections?.map((sub: any, k: number) => (
-                        <div key={k} className="space-y-1 pl-4 border-l border-white/10">
-                          <div className="text-brand-blue font-bold text-xs">{sub.title}</div>
-                          <div className="text-xs text-white/50">{sub.content}</div>
+                  <div className="md:hidden space-y-4">
+                    {cfpDetails.table.map((row: any, i: number) => (
+                      <div key={i} className="p-6 glass rounded-2xl border border-white/10 space-y-6">
+                        <div className="flex justify-between items-start gap-4">
+                          <div className="space-y-1">
+                            <div className="text-[10px] text-brand-purple uppercase tracking-widest font-bold">{row.track}</div>
+                            <h4 className="text-lg font-bold">{row.option}</h4>
+                          </div>
+                          <div className="bg-white/10 px-3 py-1 rounded-lg text-[9px] font-bold uppercase text-white/60">
+                            {row.archival}
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4 text-xs">
+                          <div className="space-y-2">
+                            <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Limit</div>
+                            <div className="text-white/80">{row.wordCount}</div>
+                          </div>
+                          <div className="space-y-2">
+                            <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Review</div>
+                            <div className="text-white/80">{row.review}</div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2 pt-4 border-t border-white/5">
+                          <div className="text-[9px] uppercase tracking-widest text-white/30 font-bold">Publication</div>
+                          <div className="text-[11px] text-white/60 leading-relaxed italic">{row.published}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+                    <div className="space-y-10">
+                      {cfpDetails.sections.map((section: any, i: number) => (
+                        <div key={i} className="space-y-4">
+                          <h4 className="font-bold text-white/90 underline decoration-white/10 underline-offset-4">{section.title}</h4>
+                          {section.content && <p className="text-sm text-white/60 font-light leading-relaxed">{section.content}</p>}
+                          {section.subsections?.map((sub: any, k: number) => (
+                            <div key={k} className="space-y-1 pl-4 border-l border-white/10">
+                              <div className="text-brand-blue font-bold text-xs">{sub.title}</div>
+                              <div className="text-xs text-white/50">{sub.content}</div>
+                            </div>
+                          ))}
                         </div>
                       ))}
                     </div>
-                  ))}
-                </div>
-                
-                <div className="space-y-8">
-                  <div className="p-10 glass rounded-[2rem] border-white/10 bg-white/5 h-fit space-y-6">
-                    <h4 className="text-lg font-bold">ACM Open Transition 2026</h4>
-                    <p className="text-xs text-white/60 leading-relaxed font-light">
-                      Starting January 1, 2026, all ACM-sponsored conferences will be 100% Open Access. A temporary subsidy is offered for 2026 to ease the transition ($250 for members, $350 for non-members).
-                    </p>
-                    <button className="w-full py-4 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-[10px] hover:scale-[1.02] transition-all">Submit Now</button>
+
+                    <div className="space-y-8">
+                      <div className="p-10 glass rounded-[2rem] border-white/10 bg-white/5 h-fit space-y-6">
+                        <h4 className="text-lg font-bold">ACM Open Transition 2026</h4>
+                        <p className="text-xs text-white/60 leading-relaxed font-light">
+                          Starting January 1, 2026, all ACM-sponsored conferences will be 100% Open Access. A temporary subsidy is offered for 2026 to ease the transition ($250 for members, $350 for non-members).
+                        </p>
+                        <button className="w-full py-4 bg-white text-black rounded-xl font-bold uppercase tracking-widest text-[10px] hover:scale-[1.02] transition-all">Submit Now</button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </section>
           )}
 
-          {activeTab !== 'general' && activeTab !== 'papers' && activeTab !== 'dates' && (
-            <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
-              <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                <Clock className="text-white/40" size={32} />
+          {activeTab === 'posters' && (
+            postersAndDemosBlocks.length > 0 ? (
+              <section className="space-y-12">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-3xl font-display font-bold text-white">Posters and Demos</h3>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={postersAndDemosBlocks} />
+                </div>
+              </section>
+            ) : (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                  <Clock className="text-white/40" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Posters and Demos call will be posted shortly.</p>
+                </div>
               </div>
-              <div className="space-y-2">
-                <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
-                <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the {tabs.find(t => t.id === activeTab)?.label} call will be posted shortly.</p>
+            )
+          )}
+
+          {activeTab === 'dc' && (
+            doctoralConsortiumBlocks.length > 0 ? (
+              <section className="space-y-12">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-3xl font-display font-bold text-white">Doctoral Consortium</h3>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={doctoralConsortiumBlocks} />
+                </div>
+              </section>
+            ) : (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                  <Clock className="text-white/40" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Doctoral Consortium will be posted shortly.</p>
+                </div>
               </div>
-            </div>
+            )
+          )}
+
+          {activeTab === 'workshops' && (
+            workshopsBlocks.length > 0 ? (
+              <section className="space-y-12">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-3xl font-display font-bold text-white">Workshops</h3>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={workshopsBlocks} />
+                </div>
+              </section>
+            ) : (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                  <Clock className="text-white/40" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Workshops call will be posted shortly.</p>
+                </div>
+              </div>
+            )
+          )}
+
+          {activeTab === 'crowdcamp' && (
+            crowdcampBlocks.length > 0 ? (
+              <section className="space-y-12">
+                <div className="flex items-center gap-4">
+                  <h3 className="text-3xl font-display font-bold text-white">CrowdCamp</h3>
+                  <div className="h-px flex-1 bg-white/10" />
+                </div>
+                <div className="max-w-5xl">
+                  <NotionContentRenderer blocks={crowdcampBlocks} />
+                </div>
+              </section>
+            ) : (
+              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                  <Clock className="text-white/40" size={32} />
+                </div>
+                <div className="space-y-2">
+                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the CrowdCamp call will be posted shortly.</p>
+                </div>
+              </div>
+            )
           )}
         </motion.div>
       </AnimatePresence>
@@ -1658,36 +1868,17 @@ function SubmissionSection() {
   );
 }
 
-function ProgramSection() {
+function ProgramSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
   const fallbackProgram = CONFERENCE_CONTENT.program as ProgramDay[];
-  const [program, setProgram] = useState<ProgramDay[]>(fallbackProgram);
-  const [isLoadingProgram, setIsLoadingProgram] = useState(true);
   const [showScrollTop, setShowScrollTop] = useState(false);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadProgram = async () => {
-      try {
-        const days = await fetchProgramDays();
-        if (isMounted && days.length > 0) {
-          setProgram(days);
-        }
-      } catch (error) {
-        console.error('Failed to load program from Notion API.', error);
-      } finally {
-        if (isMounted) {
-          setIsLoadingProgram(false);
-        }
-      }
-    };
-
-    void loadProgram();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const registryProgram = parseProgram(getDatabaseRecords(getRegistryEntry(registryContent, 'program page', 'program'))) as ProgramDay[];
+  const program = registryProgram.length > 0 ? registryProgram : fallbackProgram;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -1719,7 +1910,7 @@ function ProgramSection() {
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
             A multi-track schedule featuring keynotes, technical sessions, and interactive workshops.
           </p>
-          {isLoadingProgram ? (
+          {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">
               Syncing with Notion...
             </p>
@@ -1826,38 +2017,24 @@ function ProgramSection() {
   );
 }
 
-function OrgSection() {
+function OrgSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
   const fallbackOrganization: OrganizerGroups = {
     hcomp: CONFERENCE_CONTENT.organization.hcomp.map((member) => ({ ...member, org: member.org })),
     ci: CONFERENCE_CONTENT.organization.ci.map((member) => ({ ...member, org: member.org })),
   };
-  const [organization, setOrganization] = useState<OrganizerGroups>(fallbackOrganization);
-  const [isLoadingOrganizers, setIsLoadingOrganizers] = useState(true);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const loadOrganizers = async () => {
-      try {
-        const organizers = await fetchOrganizers();
-        if (isMounted && (organizers.hcomp.length > 0 || organizers.ci.length > 0)) {
-          setOrganization(organizers);
-        }
-      } catch (error) {
-        console.error('Failed to load organizers from Notion API.', error);
-      } finally {
-        if (isMounted) {
-          setIsLoadingOrganizers(false);
-        }
-      }
-    };
-
-    void loadOrganizers();
-
-    return () => {
-      isMounted = false;
-    };
-  }, []);
+  const registryOrganization = parseOrganizers(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'organizer page', 'organizers')),
+  );
+  const organization =
+    registryOrganization.hcomp.length > 0 || registryOrganization.ci.length > 0
+      ? (registryOrganization as OrganizerGroups)
+      : fallbackOrganization;
 
   return (
     <div className="space-y-24 pb-32">
@@ -1867,7 +2044,7 @@ function OrgSection() {
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
             Meet the team behind HCOMP 2026.
           </p>
-          {isLoadingOrganizers ? (
+          {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">
               Syncing with Notion...
             </p>
@@ -1940,8 +2117,31 @@ function OrgSection() {
   );
 }
 
-function VenueSection() {
-  const { venue } = CONFERENCE_CONTENT;
+function VenueSection({
+  registryContent,
+  isLoadingRegistry,
+}: {
+  registryContent: RegistryContent | null;
+  isLoadingRegistry: boolean;
+}) {
+  const fallbackVenue = CONFERENCE_CONTENT.venue;
+  const registryLocations = parseVenueLocations(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'venue')),
+  );
+  const registryHotels = parseAccommodations(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'accomodation')),
+  );
+  const registryTransportation = parseTransportation(
+    getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'transportation')),
+  );
+  const venue = {
+    ...fallbackVenue,
+    locations: registryLocations.length > 0 ? registryLocations : fallbackVenue.locations,
+    hotels: registryHotels.length > 0 ? registryHotels : fallbackVenue.hotels,
+    transportation: registryTransportation.length > 0 ? registryTransportation : fallbackVenue.transportation,
+    imageUrl: registryLocations.find((item) => item.imageUrl)?.imageUrl || fallbackVenue.imageUrl,
+    mainHall: registryLocations.find((item) => item.mainHall)?.mainHall || fallbackVenue.mainHall,
+  };
   const [showHotels, setShowHotels] = useState(false);
   const [showTransportation, setShowTransportation] = useState(false);
 
@@ -1953,6 +2153,9 @@ function VenueSection() {
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
             HCOMP 2026 will be held across multiple prestigious locations, chosen for their proximity and advanced facilities.
           </p>
+          {isLoadingRegistry ? (
+            <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+          ) : null}
         </div>
       </div>
 

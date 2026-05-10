@@ -3,9 +3,10 @@ import {
   getPlainText,
   getSelectValues,
   json,
-  queryDatabase,
+  queryDatabaseById,
   sortByDateTime,
 } from './_lib/notion';
+import { getRegistrySourceId } from './_lib/registry';
 
 type ProgramItem = {
   id: string;
@@ -41,7 +42,8 @@ function detectSessionType(keywords: string[]) {
 
 export default async function handler(_req: any, res: any) {
   try {
-    const pages = await queryDatabase('NOTION_PROGRAM_DATABASE_ID');
+    const databaseId = await getRegistrySourceId('program page', 'program');
+    const pages = await queryDatabaseById(databaseId);
 
     const items = sortByDateTime(
       pages
