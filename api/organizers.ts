@@ -19,7 +19,7 @@ function normalizeConference(value: string) {
 
 export default async function handler(_req: any, res: any) {
   try {
-    const databaseId = await getRegistrySourceId('organizer page', 'organizers');
+    const databaseId = await getRegistrySourceId(['organizer page', 'organizers page'], 'organizers');
     const pages = await queryDatabaseById(databaseId);
 
     const people = pages

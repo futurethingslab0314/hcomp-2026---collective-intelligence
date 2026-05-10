@@ -50,6 +50,18 @@ export function getRegistryEntry(registry: RegistryContent | null, pageKey: stri
   return registry?.[normalizeKey(pageKey)]?.[normalizeKey(sectionKey)] ?? null;
 }
 
+export function getRegistryEntryFromPages(
+  registry: RegistryContent | null,
+  pageKeys: string[],
+  sectionKey: string,
+) {
+  for (const pageKey of pageKeys) {
+    const entry = getRegistryEntry(registry, pageKey, sectionKey);
+    if (entry) return entry;
+  }
+  return null;
+}
+
 export function getDatabaseRecords(entry: RegistryEntry | null) {
   return entry?.sourceType === 'database' ? entry.records : [];
 }

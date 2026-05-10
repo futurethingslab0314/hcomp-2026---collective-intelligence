@@ -4,9 +4,9 @@ function normalizeKey(value: string) {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_');
 }
 
-export async function getRegistrySourceId(pageKey: string, sectionKey: string) {
+export async function getRegistrySourceId(pageKey: string | string[], sectionKey: string) {
   const rows = await queryDatabase('NOTION_REGISTRY_DATABASE_ID');
-  const normalizedPageKey = normalizeKey(pageKey);
+  const normalizedPageKeys = (Array.isArray(pageKey) ? pageKey : [pageKey]).map(normalizeKey);
   const normalizedSectionKey = normalizeKey(sectionKey);
 
   for (const row of rows) {
@@ -16,10 +16,10 @@ export async function getRegistrySourceId(pageKey: string, sectionKey: string) {
     const enabled = properties?.enabled ? getCheckboxValue(properties, 'enabled') : true;
     const sourceId = getPlainText(properties, 'source_id');
 
-    if (enabled && rowPageKey === normalizedPageKey && rowSectionKey === normalizedSectionKey && sourceId) {
+    if (enabled && normalizedPageKeys.includes(rowPageKey) && rowSectionKey === normalizedSectionKey && sourceId) {
       return sourceId;
     }
   }
 
-  throw new Error(`Missing registry source for ${pageKey} / ${sectionKey}`);
+  throw new Error(`Missing registry source for ${Array.isArray(pageKey) ? pageKey.join(', ') : pageKey} / ${sectionKey}`);
 }

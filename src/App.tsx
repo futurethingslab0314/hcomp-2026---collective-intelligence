@@ -27,6 +27,7 @@ import LoadingOverlay from './components/LoadingOverlay';
 import { fetchRegistryContent, type OrganizerGroups, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
 import {
   getDatabaseRecords,
+  getRegistryEntryFromPages,
   getPageBlocks,
   getRegistryEntry,
   parseAccommodations,
@@ -2029,7 +2030,7 @@ function OrgSection({
     ci: CONFERENCE_CONTENT.organization.ci.map((member) => ({ ...member, org: member.org })),
   };
   const registryOrganization = parseOrganizers(
-    getDatabaseRecords(getRegistryEntry(registryContent, 'organizer page', 'organizers')),
+    getDatabaseRecords(getRegistryEntryFromPages(registryContent, ['organizer page', 'organizers page'], 'organizers')),
   );
   const organization =
     registryOrganization.hcomp.length > 0 || registryOrganization.ci.length > 0
