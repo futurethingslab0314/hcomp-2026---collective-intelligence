@@ -285,7 +285,7 @@ function OrganizerMiniGrid({
   accentClass,
 }: {
   title: string;
-  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string }>;
+  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; email?: string }>;
   accentClass: string;
 }) {
   if (people.length === 0) {
@@ -316,6 +316,14 @@ function OrganizerMiniGrid({
               <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
               <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
               <div className="text-sm text-white/50">{person.org}</div>
+              {person.email ? (
+                <a
+                  href={`mailto:${person.email}`}
+                  className="inline-flex text-xs text-brand-blue hover:underline break-all"
+                >
+                  {person.email}
+                </a>
+              ) : null}
             </div>
           </div>
         ))}
@@ -327,7 +335,7 @@ function OrganizerMiniGrid({
 function SponsorContactsGrid({
   people,
 }: {
-  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string }>;
+  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string }>;
 }) {
   if (people.length === 0) {
     return null;
@@ -373,6 +381,14 @@ function SponsorContactsGrid({
                     {person.conference?.includes('CI') ? 'CI 2026' : 'HCOMP 2026'}
                   </div>
                   <div className="text-sm text-white/50">{person.org}</div>
+                  {person.email ? (
+                    <a
+                      href={`mailto:${person.email}`}
+                      className="inline-flex text-xs text-brand-blue hover:underline break-all"
+                    >
+                      {person.email}
+                    </a>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -433,6 +449,14 @@ function OrganizerConferenceColumn({
                   <div className={`text-[10px] font-bold uppercase tracking-widest leading-none mb-1 ${accentClass}`}>{member.role}</div>
                   <div className="font-bold text-lg leading-tight">{member.name}</div>
                   <div className="text-white/40 text-xs mt-0.5">{member.org}</div>
+                  {member.email ? (
+                    <a
+                      href={`mailto:${member.email}`}
+                      className="inline-flex mt-1 text-xs text-brand-blue hover:underline break-all"
+                    >
+                      {member.email}
+                    </a>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -1771,7 +1795,7 @@ function SubmissionSection({
           {activeTab === 'general' && (
             <section className="space-y-20">
               <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-display font-bold text-white">General Instructions</h3>
+                <h3 className="text-3xl font-display font-bold text-white">Instructions</h3>
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
@@ -1834,49 +1858,56 @@ function SubmissionSection({
                 </div>
               </div>
 
-              {/* Submission Templates */}
-              {generalInstructionBlocks.length > 0 ? (
-                <div className="max-w-5xl">
-                  <NotionContentRenderer blocks={generalInstructionBlocks} />
+              <div className="space-y-8">
+                <div className="flex items-center gap-4">
+                  <h4 className="text-2xl font-display font-bold text-white">General Instructions</h4>
+                  <div className="h-px flex-1 bg-white/10" />
                 </div>
-              ) : (
-                <>
-                  <div className="space-y-10">
-                    <h4 className="text-xl font-bold">Submission Templates</h4>
-                    <div className="space-y-6 max-w-4xl">
-                      <p className="text-white/60 font-light leading-relaxed">
-                        All submissions should use one of the following templates and must be converted to PDF at the time of submission. All authors should submit manuscripts for review in a single column format.
-                      </p>
-                      <div className="flex flex-wrap gap-4">
-                        <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">Word Template</button>
-                        <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">LaTex Template</button>
-                      </div>
-                      <div className="space-y-4 text-sm text-white/50 leading-relaxed font-light mt-8">
-                        <p>For the Word Template, follow the embedded instructions to apply the paragraph styles to your various text elements.</p>
-                        <p>
-                          To use the LaTex Template within Overleaf, select New Project -&gt; Upload Project and select the .zip file downloaded from the link above. Please use the "sigconf" proceedings template to prepare your manuscript (see sample-sigconf.tex in the samples folder). On the first active line of the Code or Visual Text Editor, replace <code className="bg-white/10 px-1 rounded text-white">\documentclass[sigconf]{'{'}acmart{'}'}</code> with <code className="bg-white/10 px-1 rounded text-white">\documentclass[manuscript]{'{'}acmart{'}'}</code> to create a single-column format.
+
+              {/* Submission Templates */}
+                {generalInstructionBlocks.length > 0 ? (
+                  <div className="max-w-5xl">
+                    <NotionContentRenderer blocks={generalInstructionBlocks} />
+                  </div>
+                ) : (
+                  <>
+                    <div className="space-y-10">
+                      <h4 className="text-xl font-bold">Submission Templates</h4>
+                      <div className="space-y-6 max-w-4xl">
+                        <p className="text-white/60 font-light leading-relaxed">
+                          All submissions should use one of the following templates and must be converted to PDF at the time of submission. All authors should submit manuscripts for review in a single column format.
                         </p>
+                        <div className="flex flex-wrap gap-4">
+                          <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">Word Template</button>
+                          <button className="px-10 py-4 bg-white text-black rounded-sm font-bold uppercase tracking-widest text-[11px] hover:bg-brand-blue hover:text-white transition-all shadow-xl shadow-white/5">LaTex Template</button>
+                        </div>
+                        <div className="space-y-4 text-sm text-white/50 leading-relaxed font-light mt-8">
+                          <p>For the Word Template, follow the embedded instructions to apply the paragraph styles to your various text elements.</p>
+                          <p>
+                            To use the LaTex Template within Overleaf, select New Project -&gt; Upload Project and select the .zip file downloaded from the link above. Please use the "sigconf" proceedings template to prepare your manuscript (see sample-sigconf.tex in the samples folder). On the first active line of the Code or Visual Text Editor, replace <code className="bg-white/10 px-1 rounded text-white">\documentclass[sigconf]{'{'}acmart{'}'}</code> with <code className="bg-white/10 px-1 rounded text-white">\documentclass[manuscript]{'{'}acmart{'}'}</code> to create a single-column format.
+                          </p>
+                        </div>
                       </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-8">
-                    <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
-                    <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                      <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP 2026 employ the following policy on the use of Large Language Models in authoring submissions.</p>
-                      <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
-                      <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
+                    <div className="space-y-8">
+                      <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
+                      <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
+                        <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP 2026 employ the following policy on the use of Large Language Models in authoring submissions.</p>
+                        <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
+                        <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="space-y-8">
-                    <h4 className="text-xl font-bold">Preprints Policy</h4>
-                    <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                      <p>We do not prohibit authors from posting preprints of their work on platforms such as SSRN or arXiv either before or during review by the conference. However, to maintain the integrity of the double-blind peer review, we ask that authors refrain from publicizing the research on social media or discussing it with the press until the review process is complete.</p>
+                    <div className="space-y-8">
+                      <h4 className="text-xl font-bold">Preprints Policy</h4>
+                      <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
+                        <p>We do not prohibit authors from posting preprints of their work on platforms such as SSRN or arXiv either before or during review by the conference. However, to maintain the integrity of the double-blind peer review, we ask that authors refrain from publicizing the research on social media or discussing it with the press until the review process is complete.</p>
+                      </div>
                     </div>
-                  </div>
-                </>
-              )}
+                  </>
+                )}
+              </div>
             </section>
           )}
 

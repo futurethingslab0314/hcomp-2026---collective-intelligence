@@ -60,6 +60,8 @@ export type OrganizerPerson = {
   role: string;
   photo: string;
   conference: string;
+  email: string;
+  order?: number;
 };
 
 function prettifyFeatureLabel(value: string) {
@@ -207,6 +209,8 @@ export function parseOrganizers(records: DatabaseRecord[]) {
       role: getStringField(record, ['role']),
       photo: getStringField(record, ['photos', 'photo', 'image']),
       conference: getStringField(record, ['conference']),
+      email: getStringField(record, ['email', 'e-mail', 'mail']),
+      order: Number(getStringField(record, ['order'])) || 999,
     };
 
     const conference = person.conference.toLowerCase();
@@ -233,6 +237,8 @@ export function parseOrganizerPeople(records: DatabaseRecord[]) {
         role: getStringField(record, ['role']),
         photo: getStringField(record, ['photos', 'photo', 'image']),
         conference: getStringField(record, ['conference']),
+        email: getStringField(record, ['email', 'e-mail', 'mail']),
+        order: Number(getStringField(record, ['order'])) || 999,
       } satisfies OrganizerPerson;
     })
     .filter(Boolean) as OrganizerPerson[];

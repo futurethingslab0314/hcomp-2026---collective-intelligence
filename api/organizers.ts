@@ -9,6 +9,7 @@ type OrganizerItem = {
   photo: string;
   conference: string;
   order: number;
+  email: string;
 };
 
 function normalizeConference(value: string) {
@@ -37,6 +38,10 @@ export default async function handler(_req: any, res: any) {
           photo: getFileUrl(properties, 'photos'),
           conference: getPlainText(properties, 'conference'),
           order: Number(getPlainText(properties, 'order')) || 999,
+          email:
+            getPlainText(properties, 'email') ||
+            getPlainText(properties, 'Email') ||
+            getPlainText(properties, 'e-mail'),
         };
 
         return person;

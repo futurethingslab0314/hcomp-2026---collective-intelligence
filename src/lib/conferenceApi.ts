@@ -22,6 +22,7 @@ export type Organizer = {
   photo?: string;
   conference?: string;
   order?: number;
+  email?: string;
 };
 
 export type OrganizerGroups = {
@@ -122,6 +123,7 @@ function normalizeOrganizers(payload: any): OrganizerGroups {
       photo: item.photo ? String(item.photo) : undefined,
       conference: item.conference ? String(item.conference) : undefined,
       order: typeof item.order === 'number' ? item.order : Number(item.order ?? 999),
+      email: item.email ? String(item.email) : undefined,
     }));
 
   return {
