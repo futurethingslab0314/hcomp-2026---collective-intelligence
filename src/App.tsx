@@ -24,7 +24,7 @@ import { PAST_HCOMP_MEETINGS, PAST_REPORTS, PAST_CI_MEETINGS } from './constants
 import { CONFERENCE_PHOTOS } from './constants/assets';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
-import { fetchRegistryContent, type OrganizerGroups, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
+import { fetchOrganizers, fetchRegistryContent, type OrganizerGroups, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
 import {
   getDatabaseRecords,
   getRegistryEntryFromPages,
@@ -85,11 +85,11 @@ export default function App() {
     let isMounted = true;
 
     const registryPagesBySection: Record<SectionId, string[]> = {
-      home: ['home page'],
+      home: [],
       submission: ['call for participation', 'home page'],
       venue: ['attend page'],
       program: ['program page'],
-      organization: ['organizer page', 'organizers page'],
+      organization: [],
       sponsors: ['sponsor page'],
       coc: ['code of conduct'],
       'past-meetings': [],
@@ -246,7 +246,7 @@ export default function App() {
             {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
-            {activeSection === 'organization' && <OrgSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'coc' && <CodeOfConductSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'past-meetings' && (
@@ -2038,23 +2038,41 @@ function ProgramSection({
 }
 
 function OrgSection({
-  registryContent,
   isLoadingRegistry,
 }: {
-  registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
 }) {
   const fallbackOrganization: OrganizerGroups = {
     hcomp: CONFERENCE_CONTENT.organization.hcomp.map((member) => ({ ...member, org: member.org })),
     ci: CONFERENCE_CONTENT.organization.ci.map((member) => ({ ...member, org: member.org })),
   };
-  const registryOrganization = parseOrganizers(
-    getDatabaseRecords(getRegistryEntryFromPages(registryContent, ['organizer page', 'organizers page'], 'organizers')),
-  );
-  const organization =
-    registryOrganization.hcomp.length > 0 || registryOrganization.ci.length > 0
-      ? (registryOrganization as OrganizerGroups)
-      : fallbackOrganization;
+  const [organization, setOrganization] = useState<OrganizerGroups>(fallbackOrganization);
+  const [isLoadingOrganizers, setIsLoadingOrganizers] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOrganizers = async () => {
+      try {
+        const organizers = await fetchOrganizers();
+        if (isMounted && (organizers.hcomp.length > 0 || organizers.ci.length > 0)) {
+          setOrganization(organizers);
+        }
+      } catch (error) {
+        console.error('Failed to load organizers from Notion API.', error);
+      } finally {
+        if (isMounted) {
+          setIsLoadingOrganizers(false);
+        }
+      }
+    };
+
+    void loadOrganizers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div className="space-y-24 pb-32">
@@ -2064,7 +2082,7 @@ function OrgSection({
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
             Meet the team behind HCOMP 2026.
           </p>
-          {isLoadingRegistry ? (
+          {isLoadingRegistry || isLoadingOrganizers ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">
               Syncing with Notion...
             </p>
