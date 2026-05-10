@@ -53,6 +53,15 @@ export type SponsorTierRow = {
   bronze: string;
 };
 
+export type OrganizerPerson = {
+  id: string;
+  name: string;
+  org: string;
+  role: string;
+  photo: string;
+  conference: string;
+};
+
 function prettifyFeatureLabel(value: string) {
   return value
     .replace(/_/g, ' ')
@@ -185,7 +194,7 @@ export function parseProgram(records: DatabaseRecord[]) {
 }
 
 export function parseOrganizers(records: DatabaseRecord[]) {
-  const groups = { hcomp: [] as any[], ci: [] as any[] };
+  const groups = { hcomp: [] as OrganizerPerson[], ci: [] as OrganizerPerson[] };
 
   for (const record of records) {
     const name = getStringField(record, ['name']);
@@ -209,6 +218,24 @@ export function parseOrganizers(records: DatabaseRecord[]) {
   groups.ci.sort((a, b) => sortByText(`${a.role}-${a.name}`, `${b.role}-${b.name}`));
 
   return groups;
+}
+
+export function parseOrganizerPeople(records: DatabaseRecord[]) {
+  return records
+    .map((record) => {
+      const name = getStringField(record, ['name']);
+      if (!name) return null;
+
+      return {
+        id: record.id,
+        name,
+        org: getStringField(record, ['organization', 'org']),
+        role: getStringField(record, ['role']),
+        photo: getStringField(record, ['photos', 'photo', 'image']),
+        conference: getStringField(record, ['conference']),
+      } satisfies OrganizerPerson;
+    })
+    .filter(Boolean) as OrganizerPerson[];
 }
 
 export function parseSponsorLogos(records: DatabaseRecord[]) {

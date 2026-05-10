@@ -33,6 +33,7 @@ import {
   parseAccommodations,
   parseCommunityPhotos,
   parseDeadlines,
+  parseOrganizerPeople,
   parseOrganizers,
   parseProgram,
   parseSponsorLogos,
@@ -87,11 +88,11 @@ export default function App() {
 
     const registryPagesBySection: Record<SectionId, string[]> = {
       home: [],
-      submission: ['call for participation', 'home page'],
+      submission: ['call for participation', 'home page', 'organizer page', 'organizers page'],
       venue: ['attend page'],
       program: ['program page'],
       organization: [],
-      sponsors: ['sponsor page'],
+      sponsors: ['sponsor page', 'organizer page', 'organizers page'],
       coc: ['code of conduct'],
       'past-meetings': [],
     };
@@ -265,6 +266,60 @@ export default function App() {
         year={selectedAwardYear} 
         onClose={() => setSelectedAwardYear(null)} 
       />
+    </div>
+  );
+}
+
+function normalizeRoleLabel(value: string) {
+  return value.trim().toLowerCase();
+}
+
+function roleIncludes(value: string, keywords: string[]) {
+  const normalized = normalizeRoleLabel(value);
+  return keywords.some((keyword) => normalized.includes(keyword));
+}
+
+function OrganizerMiniGrid({
+  title,
+  people,
+  accentClass,
+}: {
+  title: string;
+  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string }>;
+  accentClass: string;
+}) {
+  if (people.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <h4 className={`text-xl font-bold ${accentClass}`}>{title}</h4>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {people.map((person, index) => (
+          <div key={person.id ?? `${person.name}-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
+            {person.photo ? (
+              <img
+                src={person.photo}
+                alt={person.name}
+                className="w-14 h-14 rounded-2xl object-cover border border-white/10"
+              />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
+                {person.name[0]}
+              </div>
+            )}
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
+              <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
+              <div className="text-sm text-white/50">{person.org}</div>
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -956,6 +1011,11 @@ function SponsorsSection({
   const sponsorLogoItems = parseSponsorLogos(
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsor logo')),
   );
+  const organizerPeople = parseOrganizerPeople(
+    getDatabaseRecords(
+      getRegistryEntryFromPages(registryContent, ['organizer page', 'organizers page'], 'organizers'),
+    ),
+  );
   const provenCommunityItems = parseCommunityPhotos(
     getDatabaseRecords(
       getRegistryEntry(registryContent, 'sponsor page', 'proven committee') ??
@@ -1016,6 +1076,9 @@ function SponsorsSection({
   ].filter((section) => (groupedSponsorLogos[section.key] ?? []).length > 0);
   const usesRegistrySponsorTiers = sponsorTierRows.length > 0;
   const tiers = usesRegistrySponsorTiers ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
+  const sponsorContacts = organizerPeople.filter((person) =>
+    roleIncludes(person.role, ['general', 'sponsor']),
+  );
   const marqueePhotos = provenCommunityItems.length > 0
     ? provenCommunityItems.map((item) => ({
         url: item.image,
@@ -1320,29 +1383,33 @@ function SponsorsSection({
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          {[
-            { name: "Ting-Hao 'Kenneth' Huang", role: "HCOMP 2026 General Chair", title: "Associate Professor", org: "The Pennsylvania State University", email: "txh710@psu.edu" },
-            { name: "Kurt Luther", role: "CI 2026 General Chair", title: "Associate Professor", org: "Virginia Tech", email: "kluther@vt.edu" }
-          ].map((chair, i) => (
-            <div key={i} className="p-10 glass rounded-[3rem] border-white/10 hover:border-brand-blue/30 transition-all group">
-              <div className="space-y-6">
-                <div className="space-y-1">
-                  <div className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">{chair.role}</div>
-                  <h4 className="text-3xl font-display font-bold">{chair.name}</h4>
+        {sponsorContacts.length > 0 ? (
+          <OrganizerMiniGrid title="Sponsor Contacts" people={sponsorContacts} accentClass="text-brand-blue" />
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {[
+              { name: "Ting-Hao 'Kenneth' Huang", role: "HCOMP 2026 General Chair", title: "Associate Professor", org: "The Pennsylvania State University", email: "txh710@psu.edu" },
+              { name: "Kurt Luther", role: "CI 2026 General Chair", title: "Associate Professor", org: "Virginia Tech", email: "kluther@vt.edu" }
+            ].map((chair, i) => (
+              <div key={i} className="p-10 glass rounded-[3rem] border-white/10 hover:border-brand-blue/30 transition-all group">
+                <div className="space-y-6">
+                  <div className="space-y-1">
+                    <div className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">{chair.role}</div>
+                    <h4 className="text-3xl font-display font-bold">{chair.name}</h4>
+                  </div>
+                  <div className="space-y-1 text-white/60">
+                    <div className="font-bold">{chair.title}</div>
+                    <div className="italic font-serif">{chair.org}</div>
+                  </div>
+                  <a href={`mailto:${chair.email}`} className="inline-flex items-center gap-2 text-brand-blue font-bold hover:underline">
+                    {chair.email}
+                    <ChevronRight size={16} />
+                  </a>
                 </div>
-                <div className="space-y-1 text-white/60">
-                  <div className="font-bold">{chair.title}</div>
-                  <div className="italic font-serif">{chair.org}</div>
-                </div>
-                <a href={`mailto:${chair.email}`} className="inline-flex items-center gap-2 text-brand-blue font-bold hover:underline">
-                  {chair.email}
-                  <ChevronRight size={16} />
-                </a>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
 
         <div className="p-16 rounded-[4rem] bg-gradient-to-br from-brand-purple/20 to-brand-blue/20 border-white/10 text-center space-y-8 relative overflow-hidden group">
           <div className="absolute inset-0 bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
@@ -1460,7 +1527,17 @@ function SubmissionSection({
   const importantDateRecords = parseDeadlines(
     getDatabaseRecords(getRegistryEntry(registryContent, 'home page', 'important dates')),
   );
+  const organizerPeople = parseOrganizerPeople(
+    getDatabaseRecords(
+      getRegistryEntryFromPages(registryContent, ['organizer page', 'organizers page'], 'organizers'),
+    ),
+  );
   const submissionDeadlines = importantDateRecords.length > 0 ? importantDateRecords : deadlines;
+  const paperOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['program']));
+  const posterOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['posters and demos', 'poster and demos']));
+  const dcOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['doctoral consortium']));
+  const workshopOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['workshops']));
+  const crowdcampOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['crowdcamp']));
 
   const tabs = [
     { id: 'general', label: 'Instructions' },
@@ -1721,8 +1798,11 @@ function SubmissionSection({
               </div>
 
               {papersAndTalksBlocks.length > 0 ? (
-                <div className="max-w-5xl">
-                  <NotionContentRenderer blocks={papersAndTalksBlocks} />
+                <div className="space-y-12">
+                  <div className="max-w-5xl">
+                    <NotionContentRenderer blocks={papersAndTalksBlocks} />
+                  </div>
+                  <OrganizerMiniGrid title="Program Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
                 </div>
               ) : (
                 <>
@@ -1813,6 +1893,7 @@ function SubmissionSection({
                       </div>
                     </div>
                   </div>
+                  <OrganizerMiniGrid title="Program Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
                 </>
               )}
             </section>
@@ -1828,6 +1909,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={postersAndDemosBlocks} />
                 </div>
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
               <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
@@ -1852,6 +1934,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={doctoralConsortiumBlocks} />
                 </div>
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
               <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
@@ -1876,6 +1959,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={workshopsBlocks} />
                 </div>
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
               <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
@@ -1900,6 +1984,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={crowdcampBlocks} />
                 </div>
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
               <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
