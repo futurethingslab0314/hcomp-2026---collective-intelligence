@@ -214,11 +214,11 @@ export function parseOrganizers(records: DatabaseRecord[]) {
 export function parseSponsorLogos(records: DatabaseRecord[]) {
   return records
     .map((record) => ({
-      name: getStringField(record, ['name']),
+      name: getStringField(record, ['name', 'sponsorsname', 'sponsor name']),
       sub: getStringField(record, ['sub', 'subtitle', 'description', 'organization']),
       logo: getStringField(record, ['logo', 'image', 'photo', 'photos']),
       url: getStringField(record, ['url', 'link', 'website']),
-      group: getStringField(record, ['group', 'tier', 'category']) || 'general',
+      group: getStringField(record, ['group', 'tier', 'category', 'label']) || 'general',
     }))
     .filter((item) => item.name || item.logo);
 }
