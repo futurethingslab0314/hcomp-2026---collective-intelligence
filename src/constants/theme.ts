@@ -1,6 +1,6 @@
 export const THEME_COLORS = {
   blue: '#fce874',
-  purple: '#b31229', 
+  purple: '#b31229',
   teal: '#ffb0bc',
   background: '#E81B39',
 };

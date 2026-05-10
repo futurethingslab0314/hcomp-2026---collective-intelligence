@@ -1,10 +1,10 @@
 export const CONFERENCE_CONTENT = {
   title: "HCOMP",
   year: "2026",
-  fullTitle: "The 2026 ACM Collective Intelligence Conference",
+  fullTitle: "The 2026 ACM Conference on Human-AI Complementarity and Alignment. Exploring the intersections of collective intelligence, machine learning, and human creativity",
   tagline: "Exploring the intersections of collective intelligence, machine learning, and human creativity.",
-  venueInfo: "Washington D.C. • October 12–16, 2026",
-  
+  venueInfo: "Washington D.C. • September 27–30, 2026",
+
   hero: {
     title: "HCOMP",
     year: "2026",
