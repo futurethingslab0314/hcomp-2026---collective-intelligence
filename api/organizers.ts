@@ -28,14 +28,16 @@ export default async function handler(_req: any, res: any) {
         const name = getPlainText(properties, 'Name');
         if (!name) return null;
 
-        return {
+        const person: OrganizerItem = {
           id: page.id,
           name,
           organization: getPlainText(properties, 'organization'),
           role: getPlainText(properties, 'Role'),
           photo: getFileUrl(properties, 'photos'),
           conference: getPlainText(properties, 'conference'),
-        } satisfies OrganizerItem;
+        };
+
+        return person;
       })
       .filter(Boolean) as OrganizerItem[];
 
@@ -59,6 +61,7 @@ export default async function handler(_req: any, res: any) {
 
     json(res, 200, payload);
   } catch (error) {
+    console.error('Failed to load organizers', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     json(res, 500, { error: message });
   }

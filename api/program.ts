@@ -58,7 +58,7 @@ export default async function handler(_req: any, res: any) {
 
           if (!dateValue || !title) return null;
 
-          return {
+          const item: ProgramItem = {
             id: page.id,
             dateValue,
             startTime,
@@ -66,7 +66,9 @@ export default async function handler(_req: any, res: any) {
             title,
             location,
             keywords,
-          } satisfies ProgramItem;
+          };
+
+          return item;
         })
         .filter(Boolean) as ProgramItem[],
     );
@@ -112,6 +114,7 @@ export default async function handler(_req: any, res: any) {
 
     json(res, 200, { days });
   } catch (error) {
+    console.error('Failed to load program', error);
     const message = error instanceof Error ? error.message : 'Unknown error';
     json(res, 500, { error: message });
   }
