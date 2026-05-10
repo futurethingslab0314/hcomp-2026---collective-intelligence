@@ -68,7 +68,7 @@ export default function NotionContentRenderer({ blocks }: { blocks: ContentBlock
       {blocks.map((block, index) => {
         if (block.type === 'heading_1') {
           return (
-            <h1 key={`block-${index}`} className="text-3xl md:text-4xl font-display font-bold text-white">
+            <h1 key={`block-${index}`} className={`text-3xl md:text-4xl font-display font-bold text-white ${index > 0 ? 'pt-8 md:pt-12' : ''}`}>
               {renderRichText(block.richText, `h1-${index}`)}
             </h1>
           );
@@ -76,7 +76,7 @@ export default function NotionContentRenderer({ blocks }: { blocks: ContentBlock
 
         if (block.type === 'heading_2') {
           return (
-            <h2 key={`block-${index}`} className="text-2xl md:text-3xl font-display font-bold text-white">
+            <h2 key={`block-${index}`} className={`text-2xl md:text-3xl font-display font-bold text-white ${index > 0 ? 'pt-6 md:pt-10' : ''}`}>
               {renderRichText(block.richText, `h2-${index}`)}
             </h2>
           );
@@ -84,7 +84,7 @@ export default function NotionContentRenderer({ blocks }: { blocks: ContentBlock
 
         if (block.type === 'heading_3') {
           return (
-            <h3 key={`block-${index}`} className="text-xl md:text-2xl font-bold text-white">
+            <h3 key={`block-${index}`} className={`text-xl md:text-2xl font-bold text-white ${index > 0 ? 'pt-5 md:pt-8' : ''}`}>
               {renderRichText(block.richText, `h3-${index}`)}
             </h3>
           );
