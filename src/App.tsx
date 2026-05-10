@@ -31,6 +31,7 @@ import {
   getPageBlocks,
   getRegistryEntry,
   parseAccommodations,
+  parseCommunityPhotos,
   parseDeadlines,
   parseOrganizers,
   parseProgram,
@@ -955,6 +956,12 @@ function SponsorsSection({
   const sponsorLogoItems = parseSponsorLogos(
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsor logo')),
   );
+  const provenCommunityItems = parseCommunityPhotos(
+    getDatabaseRecords(
+      getRegistryEntry(registryContent, 'sponsor page', 'proven committee') ??
+      getRegistryEntry(registryContent, 'sponsor page', 'proven communities'),
+    ),
+  );
   const sponsorTierRows = parseSponsorTierRows(
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsorship tiers')),
   );
@@ -991,7 +998,15 @@ function SponsorsSection({
       }
     ]
   };
-  const tiers = sponsorTierRows.length > 0 ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
+  const usesRegistrySponsorTiers = sponsorTierRows.length > 0;
+  const tiers = usesRegistrySponsorTiers ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
+  const marqueePhotos = provenCommunityItems.length > 0
+    ? provenCommunityItems.map((item) => ({
+        url: item.image,
+        caption: item.caption || item.name,
+        link: item.url,
+      }))
+    : CONFERENCE_PHOTOS.map((item) => ({ ...item, link: '' }));
 
   return (
     <div className="space-y-24 pb-32">
@@ -1125,18 +1140,38 @@ function SponsorsSection({
               ease: "linear" 
             }}
           >
-            {[...CONFERENCE_PHOTOS, ...CONFERENCE_PHOTOS].map((photo, i) => (
-              <div key={i} className="group relative w-[300px] md:w-[450px] aspect-[16/10] overflow-hidden rounded-[2rem] glass border border-white/10">
-                <img 
-                  src={photo.url} 
-                  alt={photo.caption}
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
-                  referrerPolicy="no-referrer"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8">
-                  <div className="text-white font-display font-medium text-lg">{photo.caption}</div>
+            {[...marqueePhotos, ...marqueePhotos].map((photo, i) => (
+              photo.link ? (
+                <a
+                  key={i}
+                  href={photo.link}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="group relative w-[300px] md:w-[450px] aspect-[16/10] overflow-hidden rounded-[2rem] glass border border-white/10 block"
+                >
+                  <img 
+                    src={photo.url} 
+                    alt={photo.caption}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8">
+                    <div className="text-white font-display font-medium text-lg">{photo.caption}</div>
+                  </div>
+                </a>
+              ) : (
+                <div key={i} className="group relative w-[300px] md:w-[450px] aspect-[16/10] overflow-hidden rounded-[2rem] glass border border-white/10">
+                  <img 
+                    src={photo.url} 
+                    alt={photo.caption}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+                    referrerPolicy="no-referrer"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex flex-col justify-end p-8">
+                    <div className="text-white font-display font-medium text-lg">{photo.caption}</div>
+                  </div>
                 </div>
-              </div>
+              )
             ))}
           </motion.div>
         </div>
@@ -1256,13 +1291,15 @@ function SponsorsSection({
               </tr>
             </thead>
             <tbody className="text-sm font-medium">
-              <tr className="border-b border-white/5 bg-white/5">
-                <td className="p-6 border-r border-white/5 font-bold">Investment in USD $</td>
-                <td className="p-6 text-center border-r border-white/5 text-brand-teal">10,000+</td>
-                <td className="p-6 text-center border-r border-white/5 text-[#ffe7a6]">5,000+</td>
-                <td className="p-6 text-center border-r border-white/5 text-brand-blue">1,000+</td>
-                <td className="p-6 text-center text-orange-400">500+</td>
-              </tr>
+              {!usesRegistrySponsorTiers ? (
+                <tr className="border-b border-white/5 bg-white/5">
+                  <td className="p-6 border-r border-white/5 font-bold">Investment in USD $</td>
+                  <td className="p-6 text-center border-r border-white/5 text-brand-teal">10,000+</td>
+                  <td className="p-6 text-center border-r border-white/5 text-[#ffe7a6]">5,000+</td>
+                  <td className="p-6 text-center border-r border-white/5 text-brand-blue">1,000+</td>
+                  <td className="p-6 text-center text-orange-400">500+</td>
+                </tr>
+              ) : null}
               {tiers[0].perks.map((perk, i) => (
                 <tr key={i} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-black/20' : ''}`}>
                   <td className="p-5 border-r border-white/5 text-white/80">{perk.feature}</td>

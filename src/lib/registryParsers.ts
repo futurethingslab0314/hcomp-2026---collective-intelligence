@@ -38,6 +38,13 @@ export type SponsorLogoItem = {
   group: string;
 };
 
+export type CommunityPhotoItem = {
+  name: string;
+  caption: string;
+  image: string;
+  url: string;
+};
+
 export type SponsorTierRow = {
   feature: string;
   platinum: string;
@@ -45,6 +52,13 @@ export type SponsorTierRow = {
   silver: string;
   bronze: string;
 };
+
+function prettifyFeatureLabel(value: string) {
+  return value
+    .replace(/_/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
 
 export function getRegistryEntry(registry: RegistryContent | null, pageKey: string, sectionKey: string) {
   return registry?.[normalizeKey(pageKey)]?.[normalizeKey(sectionKey)] ?? null;
@@ -201,7 +215,7 @@ export function parseSponsorLogos(records: DatabaseRecord[]) {
   return records
     .map((record) => ({
       name: getStringField(record, ['name']),
-      sub: getStringField(record, ['sub', 'subtitle', 'description']),
+      sub: getStringField(record, ['sub', 'subtitle', 'description', 'organization']),
       logo: getStringField(record, ['logo', 'image', 'photo', 'photos']),
       url: getStringField(record, ['url', 'link', 'website']),
       group: getStringField(record, ['group', 'tier', 'category']) || 'general',
@@ -209,14 +223,66 @@ export function parseSponsorLogos(records: DatabaseRecord[]) {
     .filter((item) => item.name || item.logo);
 }
 
-export function parseSponsorTierRows(records: DatabaseRecord[]) {
+export function parseCommunityPhotos(records: DatabaseRecord[]) {
   return records
     .map((record) => ({
-      feature: getStringField(record, ['feature', 'name', 'benefit']),
-      platinum: getStringField(record, ['platinum']),
-      gold: getStringField(record, ['gold']),
-      silver: getStringField(record, ['silver']),
-      bronze: getStringField(record, ['bronze']),
+      name: getStringField(record, ['name', 'title']),
+      caption: getStringField(record, ['caption', 'description', 'subtitle', 'name', 'title']),
+      image: getStringField(record, ['image', 'photo', 'photos', 'logo']),
+      url: getStringField(record, ['url', 'link', 'website']),
     }))
-    .filter((item) => item.feature);
+    .filter((item) => item.image || item.name || item.caption);
+}
+
+export function parseSponsorTierRows(records: DatabaseRecord[]) {
+  if (records.length === 0) {
+    return [];
+  }
+
+  const tierValues: Record<string, Partial<Omit<SponsorTierRow, 'feature'>>> = {
+    platinum: {},
+    gold: {},
+    silver: {},
+    bronze: {},
+  };
+
+  const featureOrder: string[] = [];
+
+  for (const record of records) {
+    const tierName = getStringField(record, ['name']).trim().toLowerCase();
+    if (!['platinum', 'gold', 'silver', 'bronze'].includes(tierName)) {
+      continue;
+    }
+
+    for (const [key, rawValue] of Object.entries(record.fields)) {
+      if (normalizeKey(key) === 'name') {
+        continue;
+      }
+
+      if (!featureOrder.includes(key)) {
+        featureOrder.push(key);
+      }
+
+      let value = '';
+      if (typeof rawValue === 'boolean') {
+        value = rawValue ? '✓' : '×';
+      } else if (typeof rawValue === 'number') {
+        value = String(rawValue);
+      } else if (Array.isArray(rawValue)) {
+        value = rawValue.join(', ');
+      } else if (typeof rawValue === 'string') {
+        value = rawValue || '';
+      }
+
+      tierValues[tierName][key] = value;
+    }
+  }
+
+  return featureOrder.map((feature) => ({
+    feature: prettifyFeatureLabel(feature),
+    platinum: tierValues.platinum[feature] ?? '',
+    gold: tierValues.gold[feature] ?? '',
+    silver: tierValues.silver[feature] ?? '',
+    bronze: tierValues.bronze[feature] ?? '',
+  }));
 }
