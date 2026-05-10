@@ -1,4 +1,4 @@
-import { getCheckboxValue, getPlainText, queryDatabase } from './notion';
+import { getCheckboxValue, getPlainText, queryDatabase } from './notion.js';
 
 function normalizeKey(value: string) {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_');

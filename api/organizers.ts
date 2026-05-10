@@ -1,5 +1,5 @@
-import { getFileUrl, getPlainText, json, queryDatabaseById } from './_lib/notion';
-import { getRegistrySourceId } from './_lib/registry';
+import { getFileUrl, getPlainText, json, queryDatabaseById } from './_lib/notion.js';
+import { getRegistrySourceId } from './_lib/registry.js';
 
 type OrganizerItem = {
   id: string;

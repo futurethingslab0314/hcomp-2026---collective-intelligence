@@ -5,7 +5,7 @@ import {
   listBlockChildren,
   queryDatabase,
   queryDatabaseById,
-} from './_lib/notion';
+} from './_lib/notion.js';
 import {
   coalesceDocumentBlocks,
   extractNotionId,
@@ -16,7 +16,7 @@ import {
   type RegistryContent,
   type RegistryEntry,
   type RichTextSpan,
-} from '../src/lib/notionContent';
+} from '../src/lib/notionContent.js';
 
 type NotionRichText = {
   plain_text?: string | null;

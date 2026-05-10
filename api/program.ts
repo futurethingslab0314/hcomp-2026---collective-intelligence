@@ -5,8 +5,8 @@ import {
   json,
   queryDatabaseById,
   sortByDateTime,
-} from './_lib/notion';
-import { getRegistrySourceId } from './_lib/registry';
+} from './_lib/notion.js';
+import { getRegistrySourceId } from './_lib/registry.js';
 
 type ProgramItem = {
   id: string;
