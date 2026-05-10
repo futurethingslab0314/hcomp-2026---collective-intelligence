@@ -1,6 +1,11 @@
 const NOTION_VERSION = '2022-06-28';
 const NOTION_API_BASE = 'https://api.notion.com/v1';
 
+function normalizeNotionId(value: string) {
+  const match = value.match(/[0-9a-fA-F]{32}/);
+  return (match ? match[0] : value).trim();
+}
+
 type NotionSelect = { name?: string | null } | null;
 type NotionText = { plain_text?: string | null };
 type NotionFile =
@@ -71,13 +76,14 @@ async function notionFetch(path: string, init?: RequestInit) {
 }
 
 export async function queryDatabaseById(databaseId: string) {
+  const normalizedDatabaseId = normalizeNotionId(databaseId);
   const pages: NotionPage[] = [];
   let hasMore = true;
   let startCursor: string | undefined;
 
   while (hasMore) {
     const payload = startCursor ? { start_cursor: startCursor } : {};
-    const data = await notionFetch(`/databases/${databaseId}/query`, {
+    const data = await notionFetch(`/databases/${normalizedDatabaseId}/query`, {
       method: 'POST',
       body: JSON.stringify(payload),
     });
@@ -235,6 +241,7 @@ export function getFileUrls(
 }
 
 export async function listBlockChildren(blockId: string) {
+  const normalizedBlockId = normalizeNotionId(blockId);
   const blocks: any[] = [];
   let hasMore = true;
   let startCursor: string | undefined;
@@ -245,7 +252,7 @@ export async function listBlockChildren(blockId: string) {
       searchParams.set('start_cursor', startCursor);
     }
 
-    const data = await notionFetch(`/blocks/${blockId}/children?${searchParams.toString()}`);
+    const data = await notionFetch(`/blocks/${normalizedBlockId}/children?${searchParams.toString()}`);
     blocks.push(...(data.results ?? []));
     hasMore = Boolean(data.has_more);
     startCursor = data.next_cursor ?? undefined;
