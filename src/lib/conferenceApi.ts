@@ -131,7 +131,23 @@ function normalizeOrganizers(payload: any): OrganizerGroups {
 async function fetchJson(url: string) {
   const response = await fetch(url);
   if (!response.ok) {
-    throw new Error(`Request failed: ${response.status}`);
+    const body = await response.text();
+    let message = `Request failed: ${response.status}`;
+
+    try {
+      const parsed = JSON.parse(body);
+      if (parsed?.error) {
+        message = `Request failed: ${response.status} - ${parsed.error}`;
+      } else if (body) {
+        message = `Request failed: ${response.status} - ${body}`;
+      }
+    } catch {
+      if (body) {
+        message = `Request failed: ${response.status} - ${body}`;
+      }
+    }
+
+    throw new Error(message);
   }
   return response.json();
 }
