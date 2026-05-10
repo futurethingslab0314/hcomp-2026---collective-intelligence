@@ -324,6 +324,66 @@ function OrganizerMiniGrid({
   );
 }
 
+function OrganizerConferenceColumn({
+  title,
+  people,
+  accentClass,
+}: {
+  title: string;
+  people: OrganizerGroups['hcomp'];
+  accentClass: string;
+}) {
+  const grouped = people.reduce<Array<{ order: number; items: OrganizerGroups['hcomp'] }>>((acc, person) => {
+    const order = person.order ?? 999;
+    const existing = acc.find((group) => group.order === order);
+    if (existing) {
+      existing.items.push(person);
+      return acc;
+    }
+    acc.push({ order, items: [person] });
+    return acc;
+  }, []);
+
+  grouped.sort((a, b) => a.order - b.order);
+
+  return (
+    <div className="space-y-8">
+      <div className="flex items-center gap-4">
+        <h3 className={`text-2xl font-bold ${accentClass}`}>{title}</h3>
+        <div className={`h-px flex-1 ${accentClass === 'text-brand-teal' ? 'bg-brand-teal/20' : 'bg-brand-purple/20'}`} />
+      </div>
+      <div className="space-y-4">
+        {grouped.map((group) => (
+          <div key={group.order} className={`grid grid-cols-1 ${group.items.length > 1 ? 'md:grid-cols-2' : ''} gap-4`}>
+            {group.items.map((member, i) => (
+              <div key={`${member.id ?? member.name}-${i}`} className="p-6 rounded-3xl glass flex items-center gap-4 group">
+                {member.photo ? (
+                  <img
+                    src={member.photo}
+                    alt={member.name}
+                    className={`w-12 h-12 rounded-2xl object-cover border ${accentClass === 'text-brand-teal' ? 'border-brand-teal/20' : 'border-brand-purple/20'}`}
+                  />
+                ) : (
+                  <div className={`w-12 h-12 rounded-2xl flex items-center justify-center font-bold text-lg transition-all ${accentClass === 'text-brand-teal'
+                    ? 'bg-brand-teal/10 border border-brand-teal/20 text-brand-teal group-hover:bg-brand-teal group-hover:text-white'
+                    : 'bg-brand-purple/10 border border-brand-purple/20 text-brand-purple group-hover:bg-brand-purple group-hover:text-white'}`}>
+                    {member.name[0]}
+                  </div>
+                )}
+                <div>
+                  <div className={`text-[10px] font-bold uppercase tracking-widest leading-none mb-1 ${accentClass}`}>{member.role}</div>
+                  <div className="font-bold text-lg leading-tight">{member.name}</div>
+                  <div className="text-white/40 text-xs mt-0.5">{member.org}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function PastMeetingsSection({ 
   onShowAwards, 
   activeTab, 
@@ -2207,65 +2267,8 @@ function OrgSection({
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        {/* HCOMP Team */}
-        <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <h3 className="text-2xl font-bold text-brand-teal">HCOMP Team</h3>
-            <div className="h-px flex-1 bg-brand-teal/20" />
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {organization.hcomp.map((member, i) => (
-              <div key={i} className="p-6 rounded-3xl glass flex items-center gap-4 group">
-                {member.photo ? (
-                  <img
-                    src={member.photo}
-                    alt={member.name}
-                    className="w-12 h-12 rounded-2xl object-cover border border-brand-teal/20"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-brand-teal/10 border border-brand-teal/20 flex items-center justify-center text-brand-teal font-bold text-lg group-hover:bg-brand-teal group-hover:text-white transition-all">
-                    {member.name[0]}
-                  </div>
-                )}
-                <div>
-                  <div className="text-[10px] font-bold text-brand-teal uppercase tracking-widest leading-none mb-1">{member.role}</div>
-                  <div className="font-bold text-lg leading-tight">{member.name}</div>
-                  <div className="text-white/40 text-xs mt-0.5">{member.org}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* CI Team */}
-        <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <h3 className="text-2xl font-bold text-brand-purple">Collective Intelligence Team</h3>
-            <div className="h-px flex-1 bg-brand-purple/20" />
-          </div>
-          <div className="grid grid-cols-1 gap-4">
-            {organization.ci.map((member, i) => (
-              <div key={i} className="p-6 rounded-3xl glass flex items-center gap-4 group">
-                {member.photo ? (
-                  <img
-                    src={member.photo}
-                    alt={member.name}
-                    className="w-12 h-12 rounded-2xl object-cover border border-brand-purple/20"
-                  />
-                ) : (
-                  <div className="w-12 h-12 rounded-2xl bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center text-brand-purple font-bold text-lg group-hover:bg-brand-purple group-hover:text-white transition-all">
-                    {member.name[0]}
-                  </div>
-                )}
-                <div>
-                  <div className="text-[10px] font-bold text-brand-purple uppercase tracking-widest leading-none mb-1">{member.role}</div>
-                  <div className="font-bold text-lg leading-tight">{member.name}</div>
-                  <div className="text-white/40 text-xs mt-0.5">{member.org}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
+        <OrganizerConferenceColumn title="HCOMP Team" people={organization.hcomp} accentClass="text-brand-teal" />
+        <OrganizerConferenceColumn title="Collective Intelligence Team" people={organization.ci} accentClass="text-brand-purple" />
       </div>
     </div>
   );

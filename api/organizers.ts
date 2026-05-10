@@ -8,6 +8,7 @@ type OrganizerItem = {
   role: string;
   photo: string;
   conference: string;
+  order: number;
 };
 
 function normalizeConference(value: string) {
@@ -35,6 +36,7 @@ export default async function handler(_req: any, res: any) {
           role: getPlainText(properties, 'Role'),
           photo: getFileUrl(properties, 'photos'),
           conference: getPlainText(properties, 'conference'),
+          order: Number(getPlainText(properties, 'order')) || 999,
         };
 
         return person;
@@ -44,8 +46,8 @@ export default async function handler(_req: any, res: any) {
     const sorted = [...people].sort((a, b) => {
       const conferenceCompare = normalizeConference(a.conference).localeCompare(normalizeConference(b.conference));
       if (conferenceCompare !== 0) return conferenceCompare;
-      const roleCompare = a.role.localeCompare(b.role);
-      if (roleCompare !== 0) return roleCompare;
+      const orderCompare = a.order - b.order;
+      if (orderCompare !== 0) return orderCompare;
       return a.name.localeCompare(b.name);
     });
 
