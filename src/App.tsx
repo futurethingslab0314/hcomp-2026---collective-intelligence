@@ -324,6 +324,65 @@ function OrganizerMiniGrid({
   );
 }
 
+function SponsorContactsGrid({
+  people,
+}: {
+  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string }>;
+}) {
+  if (people.length === 0) {
+    return null;
+  }
+
+  const grouped = people.reduce<Array<{ role: string; items: typeof people }>>((acc, person) => {
+    const role = person.role || 'contact';
+    const existing = acc.find((group) => group.role === role);
+    if (existing) {
+      existing.items.push(person);
+      return acc;
+    }
+    acc.push({ role, items: [person] });
+    return acc;
+  }, []);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center gap-4">
+        <h4 className="text-xl font-bold text-brand-blue">Sponsor Contacts</h4>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+      <div className="space-y-4">
+        {grouped.map((group, index) => (
+          <div key={`${group.role}-${index}`} className={`grid grid-cols-1 ${group.items.length > 1 ? 'md:grid-cols-2' : ''} gap-4`}>
+            {group.items.map((person, itemIndex) => (
+              <div key={person.id ?? `${person.name}-${itemIndex}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
+                {person.photo ? (
+                  <img
+                    src={person.photo}
+                    alt={person.name}
+                    className="w-14 h-14 rounded-2xl object-cover border border-white/10"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
+                    {person.name[0]}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{group.role}</div>
+                  <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
+                  <div className="text-[10px] uppercase tracking-widest text-brand-blue font-bold">
+                    {person.conference?.includes('CI') ? 'CI 2026' : 'HCOMP 2026'}
+                  </div>
+                  <div className="text-sm text-white/50">{person.org}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 function OrganizerConferenceColumn({
   title,
   people,
@@ -1444,7 +1503,7 @@ function SponsorsSection({
         </div>
 
         {sponsorContacts.length > 0 ? (
-          <OrganizerMiniGrid title="Sponsor Contacts" people={sponsorContacts} accentClass="text-brand-blue" />
+          <SponsorContactsGrid people={sponsorContacts} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
             {[
