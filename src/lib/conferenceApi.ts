@@ -146,7 +146,10 @@ export async function fetchOrganizers() {
   return normalizeOrganizers(payload);
 }
 
-export async function fetchRegistryContent() {
-  const payload = await fetchJson('/api/content');
+export async function fetchRegistryContent(pageKeys?: string[]) {
+  const query = pageKeys && pageKeys.length > 0
+    ? `?page_keys=${encodeURIComponent(pageKeys.join(','))}`
+    : '';
+  const payload = await fetchJson(`/api/content${query}`);
   return (payload?.registry ?? {}) as RegistryContent;
 }

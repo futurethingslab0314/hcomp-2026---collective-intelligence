@@ -84,11 +84,30 @@ export default function App() {
   useEffect(() => {
     let isMounted = true;
 
+    const registryPagesBySection: Record<SectionId, string[]> = {
+      home: ['home page'],
+      submission: ['call for participation', 'home page'],
+      venue: ['attend page'],
+      program: ['program page'],
+      organization: ['organizer page', 'organizers page'],
+      sponsors: ['sponsor page'],
+      coc: ['code of conduct'],
+      'past-meetings': [],
+    };
+
     const loadRegistry = async () => {
+      const requestedPageKeys = registryPagesBySection[activeSection] ?? [];
+      if (requestedPageKeys.length === 0) {
+        if (isMounted) {
+          setIsLoadingRegistry(false);
+        }
+        return;
+      }
+
       try {
-        const content = await fetchRegistryContent();
+        const content = await fetchRegistryContent(requestedPageKeys);
         if (isMounted && Object.keys(content).length > 0) {
-          setRegistryContent(content);
+          setRegistryContent((current) => ({ ...(current ?? {}), ...content }));
         }
       } catch (error) {
         console.error('Failed to load content registry from Notion API.', error);
@@ -104,7 +123,7 @@ export default function App() {
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [activeSection]);
 
   const sections = [
     { id: 'submission', label: 'Call for Participation', icon: FileText },

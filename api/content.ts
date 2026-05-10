@@ -218,7 +218,19 @@ async function resolveRegistryEntry(page: any): Promise<RegistryEntry | null> {
 export default async function handler(_req: any, res: any) {
   try {
     const pages = await queryDatabase('NOTION_REGISTRY_DATABASE_ID');
-    const settled = await Promise.allSettled(pages.map((page) => resolveRegistryEntry(page)));
+    const rawPageKeys = typeof _req?.query?.page_keys === 'string' ? _req.query.page_keys : '';
+    const requestedPageKeys = rawPageKeys
+      .split(',')
+      .map((value: string) => normalizeKey(value))
+      .filter(Boolean);
+    const filteredPages =
+      requestedPageKeys.length > 0
+        ? pages.filter((page) => {
+            const pageKey = normalizeKey(getPlainText(page.properties, 'page_key'));
+            return requestedPageKeys.includes(pageKey);
+          })
+        : pages;
+    const settled = await Promise.allSettled(filteredPages.map((page) => resolveRegistryEntry(page)));
 
     const registry: RegistryContent = {};
     const warnings: string[] = [];
