@@ -262,8 +262,9 @@ export async function listBlockChildren(blockId: string) {
 }
 
 export function json(res: any, status: number, body: unknown) {
-  res.status(status).setHeader('Content-Type', 'application/json; charset=utf-8');
-  res.send(JSON.stringify(body));
+  res.statusCode = status;
+  res.setHeader('Content-Type', 'application/json; charset=utf-8');
+  res.end(JSON.stringify(body));
 }
 
 export function sortByDateTime<T extends { dateValue: string; startTime: string }>(items: T[]) {
