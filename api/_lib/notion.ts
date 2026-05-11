@@ -23,6 +23,7 @@ type NotionPropertyValue = {
   rich_text?: NotionText[];
   select?: NotionSelect;
   multi_select?: Array<{ name?: string | null }>;
+  relation?: Array<{ id?: string | null }>;
   url?: string | null;
   email?: string | null;
   phone_number?: string | null;
@@ -30,6 +31,15 @@ type NotionPropertyValue = {
   files?: NotionFile[];
   status?: { name?: string | null } | null;
   checkbox?: boolean | null;
+  unique_id?: { prefix?: string | null; number?: number | null } | null;
+  rollup?:
+    | {
+        type?: string;
+        number?: number | null;
+        date?: { start?: string | null; end?: string | null } | null;
+        array?: Array<NotionPropertyValue>;
+      }
+    | null;
   formula?:
     | {
         type?: string;
@@ -131,6 +141,13 @@ export function getPlainText(
     return property.status?.name?.trim?.() ?? '';
   }
 
+  if (property.type === 'relation') {
+    return (property.relation ?? [])
+      .map((item) => item?.id?.trim?.() ?? '')
+      .filter(Boolean)
+      .join(', ');
+  }
+
   if (property.type === 'url') {
     return property.url?.trim?.() ?? '';
   }
@@ -153,6 +170,50 @@ export function getPlainText(
 
   if (property.type === 'checkbox') {
     return property.checkbox ? 'true' : 'false';
+  }
+
+  if (property.type === 'unique_id') {
+    if (property.unique_id?.number == null) return '';
+    return `${property.unique_id.prefix ?? ''}${property.unique_id.number}`;
+  }
+
+  if (property.type === 'rollup') {
+    if (property.rollup?.type === 'number') {
+      return property.rollup.number != null ? String(property.rollup.number) : '';
+    }
+
+    if (property.rollup?.type === 'date') {
+      return property.rollup.date?.start?.trim?.() ?? '';
+    }
+
+    if (property.rollup?.type === 'array') {
+      return (property.rollup.array ?? [])
+        .map((item) => {
+          if (item?.type === 'title') {
+            return (item.title ?? []).map((text) => text?.plain_text ?? '').join('').trim();
+          }
+          if (item?.type === 'rich_text') {
+            return (item.rich_text ?? []).map((text) => text?.plain_text ?? '').join('').trim();
+          }
+          if (item?.type === 'select') {
+            return item.select?.name?.trim?.() ?? '';
+          }
+          if (item?.type === 'url') {
+            return item.url?.trim?.() ?? '';
+          }
+          if (item?.type === 'relation') {
+            return (item.relation ?? []).map((relation) => relation?.id?.trim?.() ?? '').filter(Boolean).join(', ');
+          }
+          if (item?.type === 'formula') {
+            if (item.formula?.type === 'string') return item.formula.string?.trim?.() ?? '';
+            if (item.formula?.type === 'number') return item.formula.number != null ? String(item.formula.number) : '';
+            if (item.formula?.type === 'boolean') return item.formula.boolean ? 'true' : 'false';
+          }
+          return '';
+        })
+        .filter(Boolean)
+        .join(', ');
+    }
   }
 
   if (property.type === 'formula') {

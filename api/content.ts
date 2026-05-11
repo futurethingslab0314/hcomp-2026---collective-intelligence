@@ -58,6 +58,8 @@ function serializePropertyValue(property: any): DatabaseRecordValue {
       return (property.multi_select ?? []).map((item: any) => item?.name?.trim?.() ?? '').filter(Boolean);
     case 'status':
       return property.status?.name?.trim?.() ?? '';
+    case 'relation':
+      return (property.relation ?? []).map((item: any) => item?.id?.trim?.() ?? '').filter(Boolean);
     case 'url':
       return property.url?.trim?.() ?? '';
     case 'email':
@@ -70,6 +72,9 @@ function serializePropertyValue(property: any): DatabaseRecordValue {
       return typeof property.number === 'number' ? property.number : null;
     case 'checkbox':
       return Boolean(property.checkbox);
+    case 'unique_id':
+      if (property.unique_id?.number == null) return null;
+      return `${property.unique_id.prefix ?? ''}${property.unique_id.number}`;
     case 'files':
       return (property.files ?? [])
         .map((file: any) => {
@@ -78,6 +83,20 @@ function serializePropertyValue(property: any): DatabaseRecordValue {
           return '';
         })
         .filter(Boolean);
+    case 'rollup':
+      if (property.rollup?.type === 'number') {
+        return typeof property.rollup.number === 'number' ? property.rollup.number : null;
+      }
+      if (property.rollup?.type === 'date') {
+        return property.rollup.date?.start?.trim?.() ?? '';
+      }
+      if (property.rollup?.type === 'array') {
+        return (property.rollup.array ?? [])
+          .map((item: any) => serializePropertyValue(item))
+          .flatMap((item: DatabaseRecordValue) => Array.isArray(item) ? item.map(String) : item == null ? [] : [String(item)])
+          .filter(Boolean);
+      }
+      return null;
     case 'formula':
       if (property.formula?.type === 'string') return property.formula.string?.trim?.() ?? '';
       if (property.formula?.type === 'number') return typeof property.formula.number === 'number' ? property.formula.number : null;
