@@ -20,7 +20,6 @@ import {
 import BackgroundCanvas from './components/BackgroundCanvas';
 import NotionContentRenderer from './components/NotionContentRenderer';
 import { CONFERENCE_CONTENT } from './constants/content';
-import { PAST_HCOMP_MEETINGS, PAST_REPORTS, PAST_CI_MEETINGS } from './constants/pastMeetings';
 import { CONFERENCE_PHOTOS } from './constants/assets';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
@@ -290,18 +289,96 @@ function roleIncludes(value: string, keywords: string[]) {
   return keywords.some((keyword) => normalized.includes(keyword));
 }
 
+function getConferenceBucket(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes('ci')) return 'ci';
+  if (normalized.includes('hcomp')) return 'hcomp';
+  return 'unknown';
+}
+
 function OrganizerMiniGrid({
   title,
   people,
   accentClass,
 }: {
   title: string;
-  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; email?: string }>;
+  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string; order?: number }>;
   accentClass: string;
 }) {
   if (people.length === 0) {
     return null;
   }
+
+  const sortPeople = (items: typeof people) =>
+    [...items].sort((a, b) => {
+      const orderCompare = (a.order ?? 999) - (b.order ?? 999);
+      if (orderCompare !== 0) return orderCompare;
+      const roleCompare = a.role.localeCompare(b.role, undefined, { sensitivity: 'base' });
+      if (roleCompare !== 0) return roleCompare;
+      return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+    });
+
+  const grouped = {
+    hcomp: sortPeople(people.filter((person) => getConferenceBucket(person.conference ?? '') === 'hcomp')),
+    ci: sortPeople(people.filter((person) => getConferenceBucket(person.conference ?? '') === 'ci')),
+  };
+
+  const fallbackPeople = sortPeople(
+    people.filter((person) => getConferenceBucket(person.conference ?? '') === 'unknown'),
+  );
+
+  const renderPeople = (
+    items: typeof people,
+    trackLabel: string,
+    trackAccentClass: string,
+    emptyMessage: string,
+  ) => (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <div className={`text-[10px] uppercase tracking-[0.2em] font-bold ${trackAccentClass}`}>
+          {trackLabel}
+        </div>
+        <div className="h-px flex-1 bg-white/10" />
+      </div>
+      {items.length > 0 ? (
+        <div className="grid grid-cols-1 gap-4">
+          {items.map((person, index) => (
+            <div key={person.id ?? `${person.name}-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
+              {person.photo ? (
+                <img
+                  src={person.photo}
+                  alt={person.name}
+                  className="w-14 h-14 rounded-2xl object-cover border border-white/10"
+                />
+              ) : (
+                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
+                  {person.name[0]}
+                </div>
+              )}
+              <div className="space-y-1">
+                <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
+                <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
+                <div className={`text-[10px] uppercase tracking-widest font-bold ${trackAccentClass}`}>{trackLabel}</div>
+                <div className="text-sm text-white/50">{person.org}</div>
+                {person.email ? (
+                  <a
+                    href={`mailto:${person.email}`}
+                    className="inline-flex text-xs text-brand-blue hover:underline break-all"
+                  >
+                    {person.email}
+                  </a>
+                ) : null}
+              </div>
+            </div>
+          ))}
+        </div>
+      ) : (
+        <div className="p-6 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
+          {emptyMessage}
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -309,35 +386,56 @@ function OrganizerMiniGrid({
         <h4 className={`text-xl font-bold ${accentClass}`}>{title}</h4>
         <div className="h-px flex-1 bg-white/10" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {people.map((person, index) => (
-          <div key={person.id ?? `${person.name}-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
-            {person.photo ? (
-              <img
-                src={person.photo}
-                alt={person.name}
-                className="w-14 h-14 rounded-2xl object-cover border border-white/10"
-              />
-            ) : (
-              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
-                {person.name[0]}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {renderPeople(grouped.hcomp, 'HCOMP 2026', 'text-brand-teal', 'HCOMP 2026 organizers will be listed here soon.')}
+        {renderPeople(grouped.ci, 'CI 2026', 'text-brand-purple', 'CI 2026 organizers will be listed here soon.')}
+      </div>
+      {fallbackPeople.length > 0 ? (
+        <div className="space-y-4">
+          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40">Unassigned Conference</div>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {fallbackPeople.map((person, index) => (
+              <div key={person.id ?? `${person.name}-fallback-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
+                {person.photo ? (
+                  <img
+                    src={person.photo}
+                    alt={person.name}
+                    className="w-14 h-14 rounded-2xl object-cover border border-white/10"
+                  />
+                ) : (
+                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
+                    {person.name[0]}
+                  </div>
+                )}
+                <div className="space-y-1">
+                  <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
+                  <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
+                  <div className="text-sm text-white/50">{person.org}</div>
+                </div>
               </div>
-            )}
-            <div className="space-y-1">
-              <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
-              <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
-              <div className="text-sm text-white/50">{person.org}</div>
-              {person.email ? (
-                <a
-                  href={`mailto:${person.email}`}
-                  className="inline-flex text-xs text-brand-blue hover:underline break-all"
-                >
-                  {person.email}
-                </a>
-              ) : null}
-            </div>
+            ))}
           </div>
-        ))}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function ComingSoonPanel({
+  title,
+  message,
+}: {
+  title: string;
+  message: string;
+}) {
+  return (
+    <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+      <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+        <Clock className="text-white/40" size={32} />
+      </div>
+      <div className="space-y-2">
+        <h4 className="text-2xl font-display font-medium text-white/60">{title}</h4>
+        <p className="text-white/30 font-serif italic text-base max-w-sm">{message}</p>
       </div>
     </div>
   );
@@ -496,6 +594,30 @@ function PastMeetingsSection({
   const reportsEntry = getRegistryEntry(registryContent, 'past meetings', 'past reports');
   const reportsRecords = getDatabaseRecords(reportsEntry);
   const dynamicReports = reportsRecords.length > 0 ? parsePastReports(reportsRecords) : null;
+  const hasPastMeetingsData = Boolean(
+    (dynamicMeetings?.hcomp.length ?? 0) > 0 ||
+    (dynamicMeetings?.ci.length ?? 0) > 0 ||
+    (dynamicReports?.length ?? 0) > 0,
+  );
+
+  if (!hasPastMeetingsData) {
+    return (
+      <div className="space-y-24 pb-32">
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-5xl font-display font-bold">Past Meetings</h2>
+            <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
+              Archived conference materials will appear here once they are available.
+            </p>
+          </div>
+        </div>
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="Past meetings and reports will be published here once the archive is ready."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-24 pb-32">
@@ -551,9 +673,7 @@ function PastMeetingsSection({
 }
 
 function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, onClose: () => void, dynamicMeetings?: PastMeetingRecord[] }) {
-  const staticMeeting = PAST_HCOMP_MEETINGS.find(m => m.year === year);
   const dynamicMeeting = dynamicMeetings?.find(m => m.year === year);
-  const meeting = staticMeeting;
 
   // Parse dynamic award text into structured categories
   const parsedAwards = dynamicMeeting?.bestPaperAward
@@ -561,16 +681,16 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
     : [];
 
   // Determine if we have any award content to show
-  const hasStaticAwards = meeting?.awards?.bestPaper || (meeting?.awards?.honorableMentions && meeting.awards.honorableMentions.length > 0);
+  const hasStaticAwards = false;
   const hasDynamicAwards = parsedAwards.length > 0;
   const hasAnyAwards = hasStaticAwards || hasDynamicAwards;
 
   // Get proceedings URL from dynamic or static data
-  const proceedingsUrl = dynamicMeeting?.proceedings || meeting?.proceedings;
+  const proceedingsUrl = dynamicMeeting?.proceedings;
   
   return (
     <AnimatePresence>
-      {year && (meeting || dynamicMeeting) && (
+      {year && dynamicMeeting && (
         <>
           {/* Backdrop */}
           <motion.div
@@ -629,36 +749,6 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
                 );
               })}
 
-              {/* Static awards from hardcoded data (takes priority when available) */}
-              {meeting?.awards?.bestPaper && (
-                <div className="space-y-6">
-                  <div className="flex items-center gap-4">
-                    <span className="px-4 py-1 bg-brand-teal/20 text-brand-teal text-[10px] font-bold uppercase tracking-widest rounded-full">Best Paper Award</span>
-                  </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl font-bold leading-snug">{meeting.awards.bestPaper.title}</h3>
-                    <p className="text-white/60 font-serif italic text-lg leading-relaxed">{meeting.awards.bestPaper.authors}</p>
-                  </div>
-                </div>
-              )}
-
-              {meeting?.awards?.honorableMentions && meeting.awards.honorableMentions.length > 0 && (
-                <div className="space-y-8">
-                  <div className="flex items-center gap-4">
-                    <span className="px-4 py-1 bg-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest rounded-full">Honorable Mention Paper Awards</span>
-                    <div className="h-px flex-1 bg-white/10" />
-                  </div>
-                  <div className="space-y-12">
-                    {meeting.awards.honorableMentions.map((mention, i) => (
-                      <div key={i} className="space-y-4">
-                        <h4 className="text-xl font-bold leading-snug">{mention.title}</h4>
-                        <p className="text-white/40 font-serif italic text-base leading-relaxed">{mention.authors}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {!hasAnyAwards && (
                 <div className="text-center py-20 text-white/30 italic font-serif">
                   Award metadata for this year is being transitioned to the digital archive.
@@ -689,7 +779,7 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
 function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
   const ciMeetings = dynamicMeetings && dynamicMeetings.length > 0
     ? dynamicMeetings.map(m => ({ year: m.year, location: m.location, website: m.website }))
-    : PAST_CI_MEETINGS;
+    : [];
 
   return (
     <div className="space-y-16 pb-32">
@@ -779,11 +869,11 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
         website: m.website,
         proceedings: m.proceedings,
       }))
-    : PAST_HCOMP_MEETINGS;
+    : [];
 
   const reports = dynamicReports && dynamicReports.length > 0
     ? dynamicReports
-    : PAST_REPORTS.map(r => ({ name: r.citation, link: r.link }));
+    : [];
 
   return (
     <div className="space-y-16 pb-32">
@@ -1219,17 +1309,6 @@ function SponsorsSection({
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
 }) {
-  const fallbackTiers = [
-    { name: "Platinum", price: "10,000+", perks: [
-      { feature: "Complimentary Registrations", platinum: "3", gold: "1", silver: "×", bronze: "×" },
-      { feature: "Named Event or Session", platinum: "✓", gold: "×", silver: "×", bronze: "×" },
-      { feature: "Named Award", platinum: "✓", gold: "×", silver: "×", bronze: "×" },
-      { feature: "10-sec Session Acknowledgment", platinum: "✓", gold: "×", silver: "×", bronze: "×" },
-      { feature: "Booth at Poster Session", platinum: "✓", gold: "✓", silver: "✓", bronze: "×" },
-      { feature: "Job Postings Distributed", platinum: "✓", gold: "✓", silver: "✓", bronze: "×" },
-      { feature: "Branding Visibility (Website/Signage)", platinum: "✓", gold: "✓", silver: "✓", bronze: "✓" },
-    ] }
-  ];
   const callForSponsorBlocks = getPageBlocks(getRegistryEntry(registryContent, 'sponsor page', 'call for sponsor'));
   const sponsorLogoItems = parseSponsorLogos(
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsor logo')),
@@ -1248,44 +1327,13 @@ function SponsorsSection({
   const sponsorTierRows = parseSponsorTierRows(
     getDatabaseRecords(getRegistryEntry(registryContent, 'sponsor page', 'sponsorship tiers')),
   );
-
-  const fallbackSponsorLogos = [
-    {
-      name: 'Mohamed bin Zayed University of Artificial Intelligence',
-      sub: 'Institute of Foundation Models',
-      logo: 'https://placehold.co/600x300/white/0a0a0a/png?text=MBZUAI+Logo',
-      url: 'https://mbzuai.ac.ae/',
-      group: 'silver',
-    },
-    {
-      name: 'Artificial Intelligence',
-      sub: 'Elsevier',
-      logo: 'https://placehold.co/600x300/white/0a0a0a/png?text=ELSEVIER+AI+Logo',
-      url: 'https://www.journals.elsevier.com/artificial-intelligence',
-      group: 'silver',
-    },
-    {
-      name: 'SIGWEB',
-      sub: '',
-      logo: 'https://placehold.co/400x200/white/0a0a0a/png?text=SIGWEB+Logo',
-      url: 'https://www.sigweb.org/',
-      group: 'sponsoring societies',
-    },
-    {
-      name: 'SIGCHI',
-      sub: '',
-      logo: 'https://placehold.co/400x200/white/0a0a0a/png?text=SIGCHI+Logo',
-      url: 'https://sigchi.org/',
-      group: 'sponsoring societies',
-    },
-  ];
-  const groupedSponsorLogos = (sponsorLogoItems.length > 0 ? sponsorLogoItems : fallbackSponsorLogos).reduce<Record<string, typeof fallbackSponsorLogos>>(
+  const groupedSponsorLogos = sponsorLogoItems.reduce<Record<string, typeof sponsorLogoItems>>(
     (acc, item) => {
       const group = item.group.trim().toLowerCase() || 'general';
       if (!acc[group]) {
         acc[group] = [];
       }
-      acc[group].push(item as (typeof fallbackSponsorLogos)[number]);
+      acc[group].push(item);
       return acc;
     },
     {},
@@ -1298,7 +1346,7 @@ function SponsorsSection({
     { key: 'sponsoring societies', title: 'Sponsoring Societies', accent: 'text-brand-purple' },
   ].filter((section) => (groupedSponsorLogos[section.key] ?? []).length > 0);
   const usesRegistrySponsorTiers = sponsorTierRows.length > 0;
-  const tiers = usesRegistrySponsorTiers ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : fallbackTiers;
+  const tiers = usesRegistrySponsorTiers ? [{ name: 'Platinum', price: '', perks: sponsorTierRows }] : [];
   const sponsorContacts = organizerPeople.filter((person) =>
     roleIncludes(person.role, ['general', 'sponsor']),
   );
@@ -1308,7 +1356,31 @@ function SponsorsSection({
         caption: item.caption || item.name,
         link: item.url,
       }))
-    : CONFERENCE_PHOTOS.map((item) => ({ ...item, link: '' }));
+    : [];
+  const hasSponsorData = callForSponsorBlocks.length > 0
+    || sponsorLogoItems.length > 0
+    || sponsorTierRows.length > 0
+    || provenCommunityItems.length > 0
+    || sponsorContacts.length > 0;
+
+  if (!hasSponsorData) {
+    return (
+      <div className="space-y-24 pb-32">
+        <div className="space-y-8">
+          <div className="space-y-4">
+            <h2 className="text-4xl md:text-5xl font-display font-bold">Call for Sponsors</h2>
+            {isLoadingRegistry ? (
+              <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+            ) : null}
+          </div>
+        </div>
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="Sponsor details will appear here once they are published."
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-24 pb-32">
@@ -1320,11 +1392,7 @@ function SponsorsSection({
             <div className="max-w-4xl">
               <NotionContentRenderer blocks={callForSponsorBlocks} />
             </div>
-          ) : (
-            <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-              The 2026 ACM Conference on Human-AI Complementarity and Alignment (HCOMP 2026) will be held from September 27-30, 2026 at the Virginia Tech Institute for Advanced Computing near Washington, DC, USA, and will be proudly co-located with Collective Intelligence (CI) 2026.
-            </p>
-          )}
+          ) : null}
           {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
           ) : null}
@@ -1459,103 +1527,10 @@ function SponsorsSection({
           </motion.div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          <div className="p-8 glass rounded-[2rem] border-brand-purple/20 space-y-6">
-            <div className="space-y-2">
-              <h4 className="text-2xl font-bold text-brand-purple">Collective Intelligence (CI)</h4>
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Interdisciplinary Focus</p>
-              <p className="text-sm text-white/60 italic font-serif">AI, HCI, social science, economics</p>
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-white/30">Recent Venues</p>
-              <ul className="space-y-2 text-sm">
-                <li>• UC San Diego (2025)</li>
-                <li>• Northeastern University (2024)</li>
-                <li>• Delft, Netherlands (2023, co-located)</li>
-              </ul>
-            </div>
-          </div>
-
-          <div className="p-8 glass rounded-[2rem] border-brand-teal/20 space-y-6">
-            <div className="space-y-2">
-              <h4 className="text-2xl font-bold text-brand-teal">HCOMP</h4>
-              <p className="text-xs font-bold text-white/30 uppercase tracking-widest">Human-AI Complementarity & Alignment</p>
-              <p className="text-sm text-white/60 italic font-serif">Founded 2009 • Now ACM Transitioned</p>
-            </div>
-            <div className="space-y-3">
-              <p className="text-xs font-bold uppercase tracking-widest text-white/30">Recent Venues</p>
-              <ul className="space-y-2 text-sm">
-                <li>• Pittsburgh, USA (2024, co-located with UIST)</li>
-                <li>• Delft, Netherlands (2023, co-located with CI)</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Strategic Co-location */}
-      <div className="glass p-12 md:p-20 rounded-[4rem] border-white/5 bg-white/[0.02] space-y-12">
-        <div className="max-w-3xl space-y-6">
-          <h3 className="text-xs font-bold text-brand-blue uppercase tracking-[0.3em]">Why 2026 Is Different?</h3>
-          <h4 className="text-4xl md:text-6xl font-display font-bold italic leading-tight">
-            A Strategic Co-Location at a Pivotal Moment
-          </h4>
-          <p className="text-xl text-white/60 font-light leading-relaxed">
-            CI + HCOMP 2026 brings two mature communities together through joint programming, shared audience, and convergent research discussions.
-          </p>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-          {[
-            { title: "Shared Impact", desc: "Unified venue and sponsorship structure" },
-            { title: "Joint Networking", desc: "Combined programming for deeper connection" },
-            { title: "Growing Ecosystem", desc: "Bridge crowdsourcing & social computing" }
-          ].map((item, i) => (
-            <div key={i} className="space-y-2 p-6 rounded-2xl bg-white/5 border border-white/5">
-              <div className="text-brand-blue font-bold text-lg">{item.title}</div>
-              <div className="text-xs text-white/40 italic font-serif">{item.desc}</div>
-            </div>
-          ))}
-        </div>
-        
-        <div className="text-center pt-8 border-t border-white/5">
-          <p className="text-2xl font-display font-bold text-title-gradient">One sponsorship. Two communities. Expanded impact.</p>
-        </div>
-      </div>
-
-      {/* Audience & Scale */}
-      <div className="space-y-12">
-        <h3 className="text-3xl font-display font-bold">Audience & Scale</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <div className="space-y-6">
-            <p className="text-white/60 leading-relaxed font-light">
-              This event guarantees a curated, international audience from academia and industry designed specifically for actionable and meaningful interaction.
-            </p>
-            <div className="space-y-4">
-              <h4 className="text-xs font-bold uppercase tracking-widest text-brand-teal">Interdisciplinary Reach</h4>
-              <div className="flex flex-wrap gap-2">
-                {["AI & Machine Learning", "Human-Computer Interaction", "Social Computing", "Organizational Science"].map(tag => (
-                  <span key={tag} className="px-4 py-1.5 bg-brand-teal/10 text-brand-teal text-[10px] font-bold uppercase tracking-wider rounded-full border border-brand-teal/20">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            </div>
-          </div>
-          <div className="p-8 rounded-3xl bg-white/5 border border-white/5 space-y-6">
-            <h4 className="text-xs font-bold uppercase tracking-widest text-brand-purple">Attendee Profile</h4>
-            <div className="grid grid-cols-2 gap-4">
-              {["Faculty & Researchers", "Industry Scientists", "PhD Students", "Job Market Candidates"].map(item => (
-                <div key={item} className="p-3 bg-white/5 rounded-xl text-sm font-medium border border-white/5">
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
 
       {/* Sponsorship Tiers Table */}
+      {tiers.length > 0 ? (
       <div className="space-y-12 overflow-hidden">
         <div className="space-y-2">
           <h3 className="text-3xl font-display font-bold">Sponsorship Tiers</h3>
@@ -1574,15 +1549,6 @@ function SponsorsSection({
               </tr>
             </thead>
             <tbody className="text-sm font-medium">
-              {!usesRegistrySponsorTiers ? (
-                <tr className="border-b border-white/5 bg-white/5">
-                  <td className="p-6 border-r border-white/5 font-bold">Investment in USD $</td>
-                  <td className="p-6 text-center border-r border-white/5 text-brand-teal">10,000+</td>
-                  <td className="p-6 text-center border-r border-white/5 text-[#ffe7a6]">5,000+</td>
-                  <td className="p-6 text-center border-r border-white/5 text-brand-blue">1,000+</td>
-                  <td className="p-6 text-center text-orange-400">500+</td>
-                </tr>
-              ) : null}
               {tiers[0].perks.map((perk, i) => (
                 <tr key={i} className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${i % 2 === 0 ? 'bg-black/20' : ''}`}>
                   <td className="p-5 border-r border-white/5 text-white/80">{perk.feature}</td>
@@ -1596,6 +1562,7 @@ function SponsorsSection({
           </table>
         </div>
       </div>
+      ) : null}
 
       {/* Let's Talk / CTA */}
       <div className="space-y-12">
@@ -1608,38 +1575,7 @@ function SponsorsSection({
 
         {sponsorContacts.length > 0 ? (
           <SponsorContactsGrid people={sponsorContacts} />
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {[
-              { name: "Ting-Hao 'Kenneth' Huang", role: "HCOMP 2026 General Chair", title: "Associate Professor", org: "The Pennsylvania State University", email: "txh710@psu.edu" },
-              { name: "Kurt Luther", role: "CI 2026 General Chair", title: "Associate Professor", org: "Virginia Tech", email: "kluther@vt.edu" }
-            ].map((chair, i) => (
-              <div key={i} className="p-10 glass rounded-[3rem] border-white/10 hover:border-brand-blue/30 transition-all group">
-                <div className="space-y-6">
-                  <div className="space-y-1">
-                    <div className="text-[10px] font-bold uppercase tracking-widest text-brand-blue">{chair.role}</div>
-                    <h4 className="text-3xl font-display font-bold">{chair.name}</h4>
-                  </div>
-                  <div className="space-y-1 text-white/60">
-                    <div className="font-bold">{chair.title}</div>
-                    <div className="italic font-serif">{chair.org}</div>
-                  </div>
-                  <a href={`mailto:${chair.email}`} className="inline-flex items-center gap-2 text-brand-blue font-bold hover:underline">
-                    {chair.email}
-                    <ChevronRight size={16} />
-                  </a>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        <div className="p-16 rounded-[4rem] bg-gradient-to-br from-brand-purple/20 to-brand-blue/20 border-white/10 text-center space-y-8 relative overflow-hidden group">
-          <div className="absolute inset-0 bg-white/[0.02] opacity-0 group-hover:opacity-100 transition-opacity" />
-          <h3 className="text-3xl md:text-5xl font-display font-bold relative z-10">
-            Join us in shaping the future of AI, work, and collective intelligence!
-          </h3>
-        </div>
+        ) : null}
       </div>
     </div>
   );
@@ -1655,77 +1591,26 @@ function CodeOfConductSection({
   const { codeOfConduct } = CONFERENCE_CONTENT;
   const pageBlocks = getPageBlocks(getRegistryEntry(registryContent, 'code of conduct', 'code of conduct'));
 
-  if (pageBlocks.length > 0) {
-    return (
-      <div className="space-y-24 pb-32">
-        <div className="space-y-8">
-          <div className="space-y-4">
-            <h2 className="text-4xl md:text-5xl font-display font-bold">Code of Conduct</h2>
-            {isLoadingRegistry ? (
-              <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
-            ) : null}
-          </div>
-        </div>
-
-        <div className="max-w-5xl">
-          <NotionContentRenderer blocks={pageBlocks} />
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-24 pb-32">
       <div className="space-y-8">
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold">{codeOfConduct.title}</h2>
-          <div className="space-y-6 max-w-4xl text-lg md:text-xl font-light leading-relaxed text-white/70">
-            <p>{codeOfConduct.introduction}</p>
-            <p>{codeOfConduct.diversityStatement}</p>
-          </div>
+          {isLoadingRegistry ? (
+            <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
+          ) : null}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <h3 className="text-2xl font-bold text-brand-teal">{codeOfConduct.expectedBehavior.title}</h3>
-            <div className="h-px flex-1 bg-brand-teal/20" />
-          </div>
-          <p className="text-white/60 font-medium">{codeOfConduct.expectedBehavior.subtitle}</p>
-          <div className="space-y-4">
-            {codeOfConduct.expectedBehavior.items.map((item, i) => (
-              <div key={i} className="p-6 rounded-3xl glass flex items-start gap-4 group">
-                <div className="w-8 h-8 rounded-full bg-brand-teal/10 border border-brand-teal/20 flex items-center justify-center text-brand-teal font-bold shrink-0">
-                  {i + 1}
-                </div>
-                <p className="text-white/70 leading-relaxed">{item}</p>
-              </div>
-            ))}
-          </div>
+      {pageBlocks.length > 0 ? (
+        <div className="max-w-5xl">
+          <NotionContentRenderer blocks={pageBlocks} />
         </div>
-
-        <div className="space-y-8">
-          <div className="flex items-center gap-4">
-            <h3 className="text-2xl font-bold text-brand-purple">{codeOfConduct.unacceptableBehavior.title}</h3>
-            <div className="h-px flex-1 bg-brand-purple/20" />
-          </div>
-          <p className="text-white/60 font-medium">{codeOfConduct.unacceptableBehavior.subtitle}</p>
-          <div className="space-y-4">
-            {codeOfConduct.unacceptableBehavior.items.map((item, i) => (
-              <div key={i} className="p-6 rounded-3xl glass flex items-start gap-4 group">
-                <div className="w-8 h-8 rounded-full bg-brand-purple/10 border border-brand-purple/20 flex items-center justify-center text-brand-purple font-bold shrink-0">
-                  !
-                </div>
-                <p className="text-white/70 leading-relaxed">{item}</p>
-              </div>
-            ))}
-          </div>
-          <p className="p-8 rounded-[2rem] bg-white/5 border border-white/10 text-sm text-white/50 italic font-serif leading-relaxed">
-            {codeOfConduct.unacceptableBehavior.footer}
-          </p>
-        </div>
-      </div>
+      ) : (
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="The code of conduct will be published here once it is available."
+        />
+      )}
     </div>
   );
 }
@@ -2032,7 +1917,7 @@ function SubmissionSection({
                   <div className="max-w-5xl">
                     <NotionContentRenderer blocks={papersAndTalksBlocks} />
                   </div>
-                  <OrganizerMiniGrid title="Program Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
                 </div>
               ) : (
                 <>
@@ -2123,7 +2008,7 @@ function SubmissionSection({
                       </div>
                     </div>
                   </div>
-                  <OrganizerMiniGrid title="Program Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
                 </>
               )}
             </section>
@@ -2142,15 +2027,18 @@ function SubmissionSection({
                 <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
-              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                  <Clock className="text-white/40" size={32} />
+              <>
+                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                    <Clock className="text-white/40" size={32} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                    <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Posters and Demos call will be posted shortly.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
-                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Posters and Demos call will be posted shortly.</p>
-                </div>
-              </div>
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" />
+              </>
             )
           )}
 
@@ -2167,15 +2055,18 @@ function SubmissionSection({
                 <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
-              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                  <Clock className="text-white/40" size={32} />
+              <>
+                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                    <Clock className="text-white/40" size={32} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                    <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Doctoral Consortium will be posted shortly.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
-                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Doctoral Consortium will be posted shortly.</p>
-                </div>
-              </div>
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" />
+              </>
             )
           )}
 
@@ -2192,15 +2083,18 @@ function SubmissionSection({
                 <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
-              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                  <Clock className="text-white/40" size={32} />
+              <>
+                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                    <Clock className="text-white/40" size={32} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                    <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Workshops call will be posted shortly.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
-                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Workshops call will be posted shortly.</p>
-                </div>
-              </div>
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" />
+              </>
             )
           )}
 
@@ -2217,15 +2111,18 @@ function SubmissionSection({
                 <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" />
               </section>
             ) : (
-              <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
-                <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
-                  <Clock className="text-white/40" size={32} />
+              <>
+                <div className="min-h-[400px] flex flex-col items-center justify-center text-center space-y-6">
+                  <div className="w-20 h-20 rounded-full bg-white/5 flex items-center justify-center border border-white/10">
+                    <Clock className="text-white/40" size={32} />
+                  </div>
+                  <div className="space-y-2">
+                    <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
+                    <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the CrowdCamp call will be posted shortly.</p>
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <h4 className="text-2xl font-display font-medium text-white/60">Coming soon!</h4>
-                  <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the CrowdCamp call will be posted shortly.</p>
-                </div>
-              </div>
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" />
+              </>
             )
           )}
         </motion.div>
@@ -2241,10 +2138,9 @@ function ProgramSection({
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
 }) {
-  const fallbackProgram = CONFERENCE_CONTENT.program as ProgramDay[];
   const [showScrollTop, setShowScrollTop] = useState(false);
   const registryProgram = parseProgram(getDatabaseRecords(getRegistryEntry(registryContent, 'program page', 'program'))) as ProgramDay[];
-  const program = registryProgram.length > 0 ? registryProgram : fallbackProgram;
+  const program = registryProgram;
 
   useEffect(() => {
     const handleScroll = () => {
@@ -2284,28 +2180,31 @@ function ProgramSection({
         </div>
 
         {/* Quick Jump Bar */}
-        <div className="sticky top-24 z-30 py-4 -mx-4 px-4 pointer-events-none">
-          <div className="glass-dense p-2 rounded-full inline-flex gap-2 border border-white/10 shadow-2xl pointer-events-auto">
-            {program.map((day) => (
-              <button
-                key={day.day}
-                onClick={() => {
-                  const el = document.getElementById(`day-${day.day}`);
-                  if (el) {
-                    const yOffset = -140; 
-                    const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
-                    window.scrollTo({top: y, behavior: 'smooth'});
-                  }
-                }}
-                className="px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-white/10 hover:text-white text-white/50 cursor-pointer"
-              >
-                Day {day.day}
-              </button>
-            ))}
+        {program.length > 0 ? (
+          <div className="sticky top-24 z-30 py-4 -mx-4 px-4 pointer-events-none">
+            <div className="glass-dense p-2 rounded-full inline-flex gap-2 border border-white/10 shadow-2xl pointer-events-auto">
+              {program.map((day) => (
+                <button
+                  key={day.day}
+                  onClick={() => {
+                    const el = document.getElementById(`day-${day.day}`);
+                    if (el) {
+                      const yOffset = -140; 
+                      const y = el.getBoundingClientRect().top + window.pageYOffset + yOffset;
+                      window.scrollTo({top: y, behavior: 'smooth'});
+                    }
+                  }}
+                  className="px-6 py-2 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all hover:bg-white/10 hover:text-white text-white/50 cursor-pointer"
+                >
+                  Day {day.day}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
+        ) : null}
       </div>
 
+      {program.length > 0 ? (
       <div className="flex flex-col gap-40">
         {program.map((day) => {
           // Group sessions by startTime to handle parallel tracks
@@ -2379,6 +2278,12 @@ function ProgramSection({
           );
         })}
       </div>
+      ) : (
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="The conference program will appear here once it has been published."
+        />
+      )}
     </div>
   );
 }
@@ -2388,11 +2293,7 @@ function OrgSection({
 }: {
   isLoadingRegistry: boolean;
 }) {
-  const fallbackOrganization: OrganizerGroups = {
-    hcomp: CONFERENCE_CONTENT.organization.hcomp.map((member) => ({ ...member, org: member.org })),
-    ci: CONFERENCE_CONTENT.organization.ci.map((member) => ({ ...member, org: member.org })),
-  };
-  const [organization, setOrganization] = useState<OrganizerGroups>(fallbackOrganization);
+  const [organization, setOrganization] = useState<OrganizerGroups>({ hcomp: [], ci: [] });
   const [isLoadingOrganizers, setIsLoadingOrganizers] = useState(true);
 
   useEffect(() => {
@@ -2436,10 +2337,17 @@ function OrgSection({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-        <OrganizerConferenceColumn title="HCOMP Team" people={organization.hcomp} accentClass="text-brand-teal" />
-        <OrganizerConferenceColumn title="Collective Intelligence Team" people={organization.ci} accentClass="text-brand-purple" />
-      </div>
+      {organization.hcomp.length > 0 || organization.ci.length > 0 ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
+          <OrganizerConferenceColumn title="HCOMP Team" people={organization.hcomp} accentClass="text-brand-teal" />
+          <OrganizerConferenceColumn title="Collective Intelligence Team" people={organization.ci} accentClass="text-brand-purple" />
+        </div>
+      ) : (
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="Organizer details will appear here once they are published."
+        />
+      )}
     </div>
   );
 }
@@ -2451,7 +2359,6 @@ function VenueSection({
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
 }) {
-  const fallbackVenue = CONFERENCE_CONTENT.venue;
   const registryLocations = parseVenueLocations(
     getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'venue')),
   );
@@ -2462,13 +2369,13 @@ function VenueSection({
     getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'transportation')),
   );
   const venue = {
-    ...fallbackVenue,
-    locations: registryLocations.length > 0 ? registryLocations : fallbackVenue.locations,
-    hotels: registryHotels.length > 0 ? registryHotels : fallbackVenue.hotels,
-    transportation: registryTransportation.length > 0 ? registryTransportation : fallbackVenue.transportation,
-    imageUrl: registryLocations.find((item) => item.imageUrl)?.imageUrl || fallbackVenue.imageUrl,
-    mainHall: registryLocations.find((item) => item.mainHall)?.mainHall || fallbackVenue.mainHall,
+    locations: registryLocations,
+    hotels: registryHotels,
+    transportation: registryTransportation,
+    imageUrl: registryLocations.find((item) => item.imageUrl)?.imageUrl || '',
+    mainHall: registryLocations.find((item) => item.mainHall)?.mainHall || '',
   };
+  const hasVenueData = registryLocations.length > 0 || registryHotels.length > 0 || registryTransportation.length > 0;
   const [showHotels, setShowHotels] = useState(false);
   const [showTransportation, setShowTransportation] = useState(false);
 
@@ -2485,6 +2392,14 @@ function VenueSection({
           ) : null}
         </div>
       </div>
+
+      {!hasVenueData ? (
+        <ComingSoonPanel
+          title="Coming soon!"
+          message="Venue, accommodation, and transportation details will appear here once they are available."
+        />
+      ) : (
+        <>
 
       <div className="space-y-6">
         {/* Desktop Table View */}
@@ -2571,6 +2486,7 @@ function VenueSection({
         </div>
       </div>
 
+      {venue.imageUrl && venue.locations[0] ? (
       <div className="relative group rounded-[3rem] overflow-hidden glass aspect-video md:aspect-[21/9]">
         <div 
           className="absolute inset-0 bg-cover bg-center mix-blend-overlay opacity-40 group-hover:scale-105 transition-transform duration-700" 
@@ -2590,6 +2506,7 @@ function VenueSection({
           </p>
         </div>
       </div>
+      ) : null}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-start">
         <div className="flex flex-col gap-4">
@@ -2665,6 +2582,8 @@ function VenueSection({
           </AnimatePresence>
         </div>
       </div>
+        </>
+      )}
     </div>
   );
 }
