@@ -162,6 +162,13 @@ function inferSourceType(rawValue: string, sourceId: string, description: string
   return 'page';
 }
 
+function splitRegistryPageKeys(value: string) {
+  return value
+    .split(/[,;\n]/)
+    .map((item) => normalizeKey(item))
+    .filter(Boolean);
+}
+
 async function resolveRegistryEntry(page: any): Promise<RegistryEntry | null> {
   const properties = page.properties;
   const pageKey = getPlainText(properties, 'page_key');
@@ -226,8 +233,8 @@ export default async function handler(_req: any, res: any) {
     const filteredPages =
       requestedPageKeys.length > 0
         ? pages.filter((page) => {
-            const pageKey = normalizeKey(getPlainText(page.properties, 'page_key'));
-            return requestedPageKeys.includes(pageKey);
+            const pageKeys = splitRegistryPageKeys(getPlainText(page.properties, 'page_key'));
+            return pageKeys.some((pageKey) => requestedPageKeys.includes(pageKey));
           })
         : pages;
     const settled = await Promise.allSettled(filteredPages.map((page) => resolveRegistryEntry(page)));
@@ -244,12 +251,18 @@ export default async function handler(_req: any, res: any) {
       const entry = result.value;
       if (!entry) continue;
 
-      const pageKey = normalizeKey(entry.pageKey);
       const sectionKey = normalizeKey(entry.sectionKey);
-      if (!registry[pageKey]) {
-        registry[pageKey] = {};
+      const pageKeys = splitRegistryPageKeys(entry.pageKey);
+
+      for (const pageKey of pageKeys) {
+        if (!registry[pageKey]) {
+          registry[pageKey] = {};
+        }
+        registry[pageKey][sectionKey] = {
+          ...entry,
+          pageKey,
+        };
       }
-      registry[pageKey][sectionKey] = entry;
     }
 
     json(res, 200, { registry, warnings });

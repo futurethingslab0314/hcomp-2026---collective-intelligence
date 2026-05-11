@@ -4,6 +4,13 @@ function normalizeKey(value: string) {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_');
 }
 
+function splitPageKeys(value: string) {
+  return value
+    .split(/[,;\n]/)
+    .map((item) => normalizeKey(item))
+    .filter(Boolean);
+}
+
 export async function getRegistrySourceId(pageKey: string | string[], sectionKey: string) {
   const rows = await queryDatabase('NOTION_REGISTRY_DATABASE_ID');
   const normalizedPageKeys = (Array.isArray(pageKey) ? pageKey : [pageKey]).map(normalizeKey);
@@ -11,12 +18,12 @@ export async function getRegistrySourceId(pageKey: string | string[], sectionKey
 
   for (const row of rows) {
     const properties = row.properties;
-    const rowPageKey = normalizeKey(getPlainText(properties, 'page_key'));
+    const rowPageKeys = splitPageKeys(getPlainText(properties, 'page_key'));
     const rowSectionKey = normalizeKey(getPlainText(properties, 'section_key'));
     const enabled = properties?.enabled ? getCheckboxValue(properties, 'enabled') : true;
     const sourceId = getPlainText(properties, 'source_id');
 
-    if (enabled && normalizedPageKeys.includes(rowPageKey) && rowSectionKey === normalizedSectionKey && sourceId) {
+    if (enabled && rowPageKeys.some((rowPageKey) => normalizedPageKeys.includes(rowPageKey)) && rowSectionKey === normalizedSectionKey && sourceId) {
       return sourceId;
     }
   }
