@@ -50,21 +50,6 @@ import {
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
 
-function getFallbackTopicSections() {
-  return {
-    hcomp: CONFERENCE_CONTENT.about.hcomp.topics.map((topic) => ({
-      category: topic.category,
-      items: topic.items,
-      conference: 'HCOMP2026',
-    })) satisfies TopicSection[],
-    ci: CONFERENCE_CONTENT.about.ci.topics.map((topic) => ({
-      category: topic.category,
-      items: topic.items,
-      conference: 'CI2026',
-    })) satisfies TopicSection[],
-  };
-}
-
 function getTopicSectionsFromRegistry(registryContent: RegistryContent | null) {
   const entry = getRegistryEntryFromPages(
     registryContent,
@@ -72,13 +57,7 @@ function getTopicSectionsFromRegistry(registryContent: RegistryContent | null) {
     'topics of interest',
   );
   const records = getDatabaseRecords(entry);
-  const parsed = parseTopicSections(records);
-  const fallback = getFallbackTopicSections();
-
-  return {
-    hcomp: parsed.hcomp.length > 0 ? parsed.hcomp : fallback.hcomp,
-    ci: parsed.ci.length > 0 ? parsed.ci : fallback.ci,
-  };
+  return parseTopicSections(records);
 }
 
 export default function App() {
@@ -1044,6 +1023,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
 function AboutLandingSection({ registryContent: _registryContent }: { registryContent: RegistryContent | null }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
+  const hasTopicSections = topicSections.hcomp.length > 0 || topicSections.ci.length > 0;
   const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
@@ -1225,23 +1205,29 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               <div className="w-8 h-[1px] bg-brand-teal" />
               Topics of Interest
             </div>
-            <div className="space-y-8">
-              {topicSections.hcomp.map((topic, j) => (
-                <div key={j} className="space-y-4">
-                  <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
-                    {topic.category}
+            {topicSections.hcomp.length > 0 ? (
+              <div className="space-y-8">
+                {topicSections.hcomp.map((topic, j) => (
+                  <div key={j} className="space-y-4">
+                    <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
+                      {topic.category}
+                    </div>
+                    <ul className="grid grid-cols-1 gap-2">
+                      {topic.items.map((item, k) => (
+                        <li key={k} className="text-base text-white flex items-start gap-3 group">
+                          <span className="text-brand-teal mt-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
+                          <span className="leading-relaxed">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="grid grid-cols-1 gap-2">
-                    {topic.items.map((item, k) => (
-                      <li key={k} className="text-base text-white flex items-start gap-3 group">
-                        <span className="text-brand-teal mt-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
-                        <span className="leading-relaxed">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
+                Topics of Interest for HCOMP 2026 are coming soon.
+              </div>
+            )}
           </div>
 
           {/* Footer Row T1 */}
@@ -1308,23 +1294,29 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               <div className="w-8 h-[1px] bg-brand-purple" />
               Topics of Interest
             </div>
-            <div className="space-y-8">
-              {topicSections.ci.map((topic, j) => (
-                <div key={j} className="space-y-4">
-                  <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
-                    {topic.category}
+            {topicSections.ci.length > 0 ? (
+              <div className="space-y-8">
+                {topicSections.ci.map((topic, j) => (
+                  <div key={j} className="space-y-4">
+                    <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
+                      {topic.category}
+                    </div>
+                    <ul className="grid grid-cols-1 gap-2">
+                      {topic.items.map((item, k) => (
+                        <li key={k} className="text-base text-white flex items-start gap-3 group">
+                          <span className="text-brand-purple mt-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
+                          <span className="leading-relaxed">{item}</span>
+                        </li>
+                      ))}
+                    </ul>
                   </div>
-                  <ul className="grid grid-cols-1 gap-2">
-                    {topic.items.map((item, k) => (
-                      <li key={k} className="text-base text-white flex items-start gap-3 group">
-                        <span className="text-brand-purple mt-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
-                        <span className="leading-relaxed">{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            ) : (
+              <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
+                Topics of Interest for CI 2026 are coming soon.
+              </div>
+            )}
           </div>
 
           {/* Footer Row T2 */}
@@ -1680,6 +1672,7 @@ function SubmissionSection({
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
   const [activeTopicTrack, setActiveTopicTrack] = useState<'ci' | 'hcomp'>('hcomp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const activeTopicSections = topicSections[activeTopicTrack];
   const generalInstructionBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'general instructions'));
   const papersAndTalksBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'papers and talks'));
   const postersAndDemosBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'poster and demos'));
@@ -1858,23 +1851,30 @@ function SubmissionSection({
                   )}
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {topicSections[activeTopicTrack].map((group, i: number) => (
-                    <div key={i} className="p-8 glass rounded-[2rem] border-white/5 space-y-6">
-                      <div className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full w-fit ${activeTopicTrack === 'ci' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-brand-teal/10 text-brand-teal'}`}>
-                        {group.category}
+                {activeTopicSections.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {activeTopicSections.map((group, i: number) => (
+                      <div key={i} className="p-8 glass rounded-[2rem] border-white/5 space-y-6">
+                        <div className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full w-fit ${activeTopicTrack === 'ci' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-brand-teal/10 text-brand-teal'}`}>
+                          {group.category}
+                        </div>
+                        <ul className="space-y-3">
+                          {group.items.map((item: string, j: number) => (
+                            <li key={j} className="flex items-start gap-3 text-sm text-white/60 group">
+                              <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${activeTopicTrack === 'ci' ? 'bg-brand-purple' : 'bg-brand-teal'}`} />
+                              <span className="group-hover:text-white transition-colors">{item}</span>
+                            </li>
+                          ))}
+                        </ul>
                       </div>
-                      <ul className="space-y-3">
-                        {group.items.map((item: string, j: number) => (
-                          <li key={j} className="flex items-start gap-3 text-sm text-white/60 group">
-                            <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${activeTopicTrack === 'ci' ? 'bg-brand-purple' : 'bg-brand-teal'}`} />
-                            <span className="group-hover:text-white transition-colors">{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <ComingSoonPanel
+                    title="Coming soon!"
+                    message={`Topics of Interest for ${activeTopicTrack.toUpperCase()} 2026 will appear here once they are published.`}
+                  />
+                )}
               </div>
 
               <div className="space-y-8">
