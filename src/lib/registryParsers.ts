@@ -65,6 +65,8 @@ export type ConferenceTopicBriefs = {
 };
 
 export type ConferenceInfoContent = {
+  heroName: string;
+  heroLongName: string;
   about: string;
   conferenceInfo: string;
   venueInfo: string;
@@ -273,6 +275,8 @@ export function parseConferenceTopicBriefs(records: DatabaseRecord[]): Conferenc
 }
 
 export function parseConferenceInfoContent(records: DatabaseRecord[]): ConferenceInfoContent {
+  const mainRecord =
+    records.find((record) => getStringField(record, ['main']).toLowerCase() === 'true') ?? records[0];
   const aboutValues = new Set<string>();
   const conferenceInfoValues = new Set<string>();
   const locationValues = new Set<string>();
@@ -294,6 +298,8 @@ export function parseConferenceInfoContent(records: DatabaseRecord[]): Conferenc
   const eventDateText = Array.from(eventDateValues).join(' • ');
 
   return {
+    heroName: mainRecord ? getStringField(mainRecord, ['name']) : '',
+    heroLongName: mainRecord ? getStringField(mainRecord, ['long name', 'long_name']) : '',
     about: Array.from(aboutValues).join('\n\n'),
     conferenceInfo: Array.from(conferenceInfoValues).join('\n\n'),
     venueInfo: [locationText, eventDateText].filter(Boolean).join(' • '),

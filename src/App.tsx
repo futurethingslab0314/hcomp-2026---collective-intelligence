@@ -1130,6 +1130,8 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
     .filter(Boolean);
   const conferenceInfoText = conferenceInfoContent.conferenceInfo || about.info.content;
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
+  const heroTitle = conferenceInfoContent.heroName || hero.title;
+  const heroSubtitle = conferenceInfoContent.heroLongName || hero.subtitle;
   const hcompGeneralChair = homeOrganizers.hcomp.find((person) => person.role.toLowerCase().includes('general chair'));
   const ciGeneralChair = homeOrganizers.ci.find((person) => person.role.toLowerCase().includes('general chair'));
 
@@ -1187,7 +1189,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
-            {hero.title}<br />
+            {heroTitle}<br />
             {hero.year}
           </motion.h1>
           
@@ -1197,7 +1199,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             animate={{ opacity: 1 }}
             transition={{ delay: 0.4, duration: 1 }}
           >
-            {hero.subtitle}
+            {heroSubtitle}
           </motion.p>
 
           <motion.div
