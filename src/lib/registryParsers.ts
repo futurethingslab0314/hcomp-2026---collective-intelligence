@@ -277,19 +277,13 @@ export function parseConferenceTopicBriefs(records: DatabaseRecord[]): Conferenc
 export function parseConferenceInfoContent(records: DatabaseRecord[]): ConferenceInfoContent {
   const mainRecord =
     records.find((record) => getStringField(record, ['main']).toLowerCase() === 'true') ?? records[0];
-  const aboutValues = new Set<string>();
-  const conferenceInfoValues = new Set<string>();
   const locationValues = new Set<string>();
   const eventDateValues = new Set<string>();
 
   for (const record of records) {
-    const about = getStringField(record, ['about']);
-    const conferenceInfo = getStringField(record, ['conference info', 'conference_info']);
     const location = getStringField(record, ['location', 'venue', 'place']);
     const eventDate = getStringField(record, ['event date', 'event_date', 'date']);
 
-    if (about) aboutValues.add(about);
-    if (conferenceInfo) conferenceInfoValues.add(conferenceInfo);
     if (location) locationValues.add(location);
     if (eventDate) eventDateValues.add(eventDate);
   }
@@ -300,8 +294,8 @@ export function parseConferenceInfoContent(records: DatabaseRecord[]): Conferenc
   return {
     heroName: mainRecord ? getStringField(mainRecord, ['name']) : '',
     heroLongName: mainRecord ? getStringField(mainRecord, ['long name', 'long_name']) : '',
-    about: Array.from(aboutValues).join('\n\n'),
-    conferenceInfo: Array.from(conferenceInfoValues).join('\n\n'),
+    about: mainRecord ? getStringField(mainRecord, ['about']) : '',
+    conferenceInfo: mainRecord ? getStringField(mainRecord, ['conference info', 'conference_info']) : '',
     venueInfo: [locationText, eventDateText].filter(Boolean).join(' • '),
   };
 }
