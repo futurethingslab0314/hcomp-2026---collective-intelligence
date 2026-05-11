@@ -778,7 +778,13 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
 
 function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
   const ciMeetings = dynamicMeetings && dynamicMeetings.length > 0
-    ? dynamicMeetings.map(m => ({ year: m.year, location: m.location, website: m.website }))
+    ? dynamicMeetings.map(m => ({
+        year: m.year,
+        location: m.location,
+        website: m.website,
+        proceedings: m.proceedings,
+        bestPaperAward: m.bestPaperAward,
+      }))
     : [];
 
   return (
@@ -827,30 +833,36 @@ function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: b
               </div>
 
               <div className="grid grid-cols-1 gap-2 pt-4">
-                <a 
-                  href={meeting.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
-                >
-                  Website
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </a>
-                <a 
-                  href="https://dl.acm.org/conference/ci"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
-                >
-                  Proceedings
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </a>
-                <button 
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn opacity-50 cursor-not-allowed"
-                >
-                  Best Paper Award
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </button>
+                {meeting.website ? (
+                  <a 
+                    href={meeting.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
+                  >
+                    Website
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </a>
+                ) : null}
+                {meeting.proceedings ? (
+                  <a 
+                    href={meeting.proceedings}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
+                  >
+                    Proceedings
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </a>
+                ) : null}
+                {meeting.bestPaperAward ? (
+                  <button 
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn opacity-50 cursor-not-allowed"
+                  >
+                    Best Paper Award
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </button>
+                ) : null}
               </div>
             </div>
           </motion.div>
@@ -868,6 +880,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
         theme: '',
         website: m.website,
         proceedings: m.proceedings,
+        bestPaperAward: m.bestPaperAward,
       }))
     : [];
 
@@ -897,7 +910,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 rounded-[2rem] border border-white/10 overflow-hidden">
-        {hcompMeetings.map((meeting, i) => (
+      {hcompMeetings.map((meeting, i) => (
           <motion.div
             key={meeting.year}
             initial={{ opacity: 0 }}
@@ -920,31 +933,37 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
               </div>
 
               <div className="grid grid-cols-1 gap-2 pt-4">
-                <a 
-                  href={meeting.website}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn"
-                >
-                  Website
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </a>
-                <a 
-                  href={meeting.proceedings}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn"
-                >
-                  Proceedings
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </a>
-                <button 
-                  onClick={() => onShowAwards(meeting.year)}
-                  className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn cursor-pointer"
-                >
-                  Best Paper Award
-                  <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                </button>
+                {meeting.website ? (
+                  <a 
+                    href={meeting.website}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn"
+                  >
+                    Website
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </a>
+                ) : null}
+                {meeting.proceedings ? (
+                  <a 
+                    href={meeting.proceedings}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn"
+                  >
+                    Proceedings
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </a>
+                ) : null}
+                {meeting.bestPaperAward ? (
+                  <button 
+                    onClick={() => onShowAwards(meeting.year)}
+                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-teal transition-all group/btn cursor-pointer"
+                  >
+                    Best Paper Award
+                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
+                  </button>
+                ) : null}
               </div>
             </div>
           </motion.div>
