@@ -36,12 +36,14 @@ import {
   parseOrganizerPeople,
   parseOrganizers,
   parsePastMeetings,
+  parsePastReports,
   parseProgram,
   parseSponsorLogos,
   parseSponsorTierRows,
   parseTransportation,
   parseVenueLocations,
   type PastMeetingRecord,
+  type PastReportRecord,
 } from './lib/registryParsers';
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
@@ -490,6 +492,10 @@ function PastMeetingsSection({
   const records = getDatabaseRecords(entry);
   const dynamicMeetings = records.length > 0 ? parsePastMeetings(records) : null;
 
+  const reportsEntry = getRegistryEntry(registryContent, 'past meetings', 'past reports');
+  const reportsRecords = getDatabaseRecords(reportsEntry);
+  const dynamicReports = reportsRecords.length > 0 ? parsePastReports(reportsRecords) : null;
+
   return (
     <div className="space-y-24 pb-32">
       <div className="space-y-8">
@@ -534,7 +540,7 @@ function PastMeetingsSection({
         transition={{ duration: 0.3 }}
       >
         {activeTab === 'hcomp' ? (
-          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} />
+          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} dynamicReports={dynamicReports} />
         ) : (
           <PastCISection hideHeader dynamicMeetings={dynamicMeetings?.ci} />
         )}
@@ -728,7 +734,7 @@ function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: b
   );
 }
 
-function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings }: { onShowAwards: (year: number) => void, hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
+function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, dynamicReports }: { onShowAwards: (year: number) => void, hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[], dynamicReports?: PastReportRecord[] | null }) {
   const hcompMeetings = dynamicMeetings && dynamicMeetings.length > 0
     ? dynamicMeetings.map(m => ({
         year: m.year,
@@ -738,6 +744,10 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings }:
         proceedings: m.proceedings,
       }))
     : PAST_HCOMP_MEETINGS;
+
+  const reports = dynamicReports && dynamicReports.length > 0
+    ? dynamicReports
+    : PAST_REPORTS.map(r => ({ name: r.citation, link: r.link }));
 
   return (
     <div className="space-y-16 pb-32">
@@ -824,24 +834,26 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings }:
         <div className="space-y-8">
           <h4 className="text-xl font-bold text-brand-teal">Past Reports</h4>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {PAST_REPORTS.map((report, i) => (
+            {reports.map((report, i) => (
               <motion.div 
                 key={i}
                 whileHover={{ x: 4 }}
                 className="group p-8 glass rounded-[2rem] border-white/5 hover:border-brand-teal/30 transition-all flex flex-col justify-between items-start gap-6"
               >
                 <p className="text-white/60 font-serif italic leading-relaxed">
-                  {report.citation}
+                  {report.name}
                 </p>
-                <a 
-                  href={report.link}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-xs font-bold text-brand-teal hover:underline"
-                >
-                  Read Report
-                  <ChevronRight size={14} />
-                </a>
+                {report.link && (
+                  <a 
+                    href={report.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 text-xs font-bold text-brand-teal hover:underline"
+                  >
+                    Read Report
+                    <ChevronRight size={14} />
+                  </a>
+                )}
               </motion.div>
             ))}
           </div>

@@ -356,3 +356,17 @@ export function parsePastMeetings(records: DatabaseRecord[]) {
 
   return { hcomp, ci };
 }
+
+export type PastReportRecord = {
+  name: string;
+  link: string;
+};
+
+export function parsePastReports(records: DatabaseRecord[]) {
+  return records
+    .map((record) => ({
+      name: getStringField(record, ['name', 'title', 'citation']),
+      link: getStringField(record, ['link', 'url', 'website']),
+    }))
+    .filter((item) => item.name || item.link);
+}
