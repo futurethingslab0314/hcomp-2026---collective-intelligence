@@ -53,6 +53,12 @@ export type SponsorTierRow = {
   bronze: string;
 };
 
+export type TopicSection = {
+  category: string;
+  items: string[];
+  conference: string;
+};
+
 export type OrganizerPerson = {
   id: string;
   name: string;
@@ -97,6 +103,13 @@ export function getPageBlocks(entry: RegistryEntry | null) {
 
 function sortByText(a: string, b: string) {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
+}
+
+function normalizeConferenceBucket(value: string) {
+  const normalized = value.trim().toLowerCase();
+  if (normalized.includes('hcomp')) return 'hcomp';
+  if (normalized.includes('ci')) return 'ci';
+  return 'other';
 }
 
 export function parseDeadlines(records: DatabaseRecord[]) {
@@ -193,6 +206,33 @@ export function parseProgram(records: DatabaseRecord[]) {
   }
 
   return Array.from(groups.values());
+}
+
+export function parseTopicSections(records: DatabaseRecord[]) {
+  const grouped = {
+    hcomp: [] as TopicSection[],
+    ci: [] as TopicSection[],
+  };
+
+  for (const record of records) {
+    const category = getStringField(record, ['name', 'title', 'category']);
+    const items = getStringListField(record, ['topic', 'topics', 'item', 'items']);
+    const conference = getStringField(record, ['conference']);
+
+    if (!category && items.length === 0) continue;
+
+    const section = {
+      category,
+      items,
+      conference,
+    } satisfies TopicSection;
+
+    const bucket = normalizeConferenceBucket(conference);
+    if (bucket === 'hcomp') grouped.hcomp.push(section);
+    if (bucket === 'ci') grouped.ci.push(section);
+  }
+
+  return grouped;
 }
 
 export function parseOrganizers(records: DatabaseRecord[]) {

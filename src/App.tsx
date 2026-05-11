@@ -40,13 +40,46 @@ import {
   parseProgram,
   parseSponsorLogos,
   parseSponsorTierRows,
+  parseTopicSections,
   parseTransportation,
   parseVenueLocations,
   type PastMeetingRecord,
   type PastReportRecord,
+  type TopicSection,
 } from './lib/registryParsers';
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
+
+function getFallbackTopicSections() {
+  return {
+    hcomp: CONFERENCE_CONTENT.about.hcomp.topics.map((topic) => ({
+      category: topic.category,
+      items: topic.items,
+      conference: 'HCOMP2026',
+    })) satisfies TopicSection[],
+    ci: CONFERENCE_CONTENT.about.ci.topics.map((topic) => ({
+      category: topic.category,
+      items: topic.items,
+      conference: 'CI2026',
+    })) satisfies TopicSection[],
+  };
+}
+
+function getTopicSectionsFromRegistry(registryContent: RegistryContent | null) {
+  const entry = getRegistryEntryFromPages(
+    registryContent,
+    ['home page', 'call for participation'],
+    'topics of interest',
+  );
+  const records = getDatabaseRecords(entry);
+  const parsed = parseTopicSections(records);
+  const fallback = getFallbackTopicSections();
+
+  return {
+    hcomp: parsed.hcomp.length > 0 ? parsed.hcomp : fallback.hcomp,
+    ci: parsed.ci.length > 0 ? parsed.ci : fallback.ci,
+  };
+}
 
 export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -91,7 +124,7 @@ export default function App() {
     let isMounted = true;
 
     const registryPagesBySection: Record<SectionId, string[]> = {
-      home: [],
+      home: ['home page'],
       submission: ['call for participation', 'home page', 'organizer page', 'organizers page'],
       venue: ['attend page'],
       program: ['program page'],
@@ -1010,6 +1043,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
 
 function AboutLandingSection({ registryContent: _registryContent }: { registryContent: RegistryContent | null }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
+  const topicSections = getTopicSectionsFromRegistry(_registryContent);
   const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
@@ -1192,7 +1226,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               Topics of Interest
             </div>
             <div className="space-y-8">
-              {about.hcomp.topics.map((topic, j) => (
+              {topicSections.hcomp.map((topic, j) => (
                 <div key={j} className="space-y-4">
                   <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
                     {topic.category}
@@ -1275,7 +1309,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               Topics of Interest
             </div>
             <div className="space-y-8">
-              {about.ci.topics.map((topic, j) => (
+              {topicSections.ci.map((topic, j) => (
                 <div key={j} className="space-y-4">
                   <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
                     {topic.category}
@@ -1642,6 +1676,7 @@ function SubmissionSection({
   isLoadingRegistry: boolean;
 }) {
   const { cfpDetails, about, deadlines } = CONFERENCE_CONTENT;
+  const topicSections = getTopicSectionsFromRegistry(registryContent);
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
   const [activeTopicTrack, setActiveTopicTrack] = useState<'ci' | 'hcomp'>('hcomp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -1824,7 +1859,7 @@ function SubmissionSection({
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {about[activeTopicTrack].topics.map((group: any, i: number) => (
+                  {topicSections[activeTopicTrack].map((group, i: number) => (
                     <div key={i} className="p-8 glass rounded-[2rem] border-white/5 space-y-6">
                       <div className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full w-fit ${activeTopicTrack === 'ci' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-brand-teal/10 text-brand-teal'}`}>
                         {group.category}
