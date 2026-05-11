@@ -6,6 +6,10 @@ function normalizeNotionId(value: string) {
   return (match ? match[0] : value).trim();
 }
 
+function normalizePropertyName(value: string) {
+  return value.trim().toLowerCase().replace(/[\s/]+/g, '_');
+}
+
 type NotionSelect = { name?: string | null } | null;
 type NotionText = { plain_text?: string | null };
 type NotionFile =
@@ -55,6 +59,23 @@ type NotionPage = {
   id: string;
   properties?: Record<string, NotionPropertyValue>;
 };
+
+function getProperty(
+  properties: Record<string, NotionPropertyValue> | undefined,
+  propertyName: string,
+) {
+  if (!properties) return undefined;
+  if (properties[propertyName]) return properties[propertyName];
+
+  const normalizedTarget = normalizePropertyName(propertyName);
+  for (const [key, value] of Object.entries(properties)) {
+    if (normalizePropertyName(key) === normalizedTarget) {
+      return value;
+    }
+  }
+
+  return undefined;
+}
 
 function getEnv(name: string) {
   const value = process.env[name];
@@ -115,7 +136,7 @@ export function getPlainText(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (!property) return '';
 
   if (property.type === 'title') {
@@ -229,7 +250,7 @@ export function getSelectValues(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (!property) return [];
 
   if (property.type === 'multi_select') {
@@ -248,7 +269,7 @@ export function getDateValue(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (property?.type === 'date') {
     return property.date?.start ?? '';
   }
@@ -259,7 +280,7 @@ export function getCheckboxValue(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (property?.type === 'checkbox') {
     return Boolean(property.checkbox);
   }
@@ -270,7 +291,7 @@ export function getFileUrl(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (property?.type !== 'files') {
     return getPlainText(properties, propertyName);
   }
@@ -286,7 +307,7 @@ export function getFileUrls(
   properties: Record<string, NotionPropertyValue> | undefined,
   propertyName: string,
 ) {
-  const property = properties?.[propertyName];
+  const property = getProperty(properties, propertyName);
   if (property?.type !== 'files') {
     const plainText = getPlainText(properties, propertyName);
     return plainText ? [plainText] : [];

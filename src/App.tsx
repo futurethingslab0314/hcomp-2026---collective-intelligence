@@ -51,12 +51,23 @@ import {
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
 
 function getTopicSectionsFromRegistry(registryContent: RegistryContent | null) {
-  const entry = getRegistryEntryFromPages(
-    registryContent,
-    ['home page', 'call for participation'],
-    'topics of interest',
-  );
-  const records = getDatabaseRecords(entry);
+  let records = getDatabaseRecords(getRegistryEntry(registryContent, 'home page', 'topics of interest'));
+
+  if (records.length === 0) {
+    records = getDatabaseRecords(getRegistryEntry(registryContent, 'call for participation', 'topics of interest'));
+  }
+
+  if (records.length === 0 && registryContent) {
+    for (const pageSections of Object.values(registryContent)) {
+      const entry = pageSections?.['topics_of_interest'];
+      const entryRecords = getDatabaseRecords(entry ?? null);
+      if (entryRecords.length > 0) {
+        records = entryRecords;
+        break;
+      }
+    }
+  }
+
   return parseTopicSections(records);
 }
 
@@ -103,7 +114,7 @@ export default function App() {
     let isMounted = true;
 
     const registryPagesBySection: Record<SectionId, string[]> = {
-      home: ['home page'],
+      home: ['home page', 'call for participation'],
       submission: ['call for participation', 'home page', 'organizer page', 'organizers page'],
       venue: ['attend page'],
       program: ['program page'],
