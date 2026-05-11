@@ -2556,7 +2556,7 @@ function VenueSection({
           </div>
           <h3 className="text-3xl md:text-4xl font-display font-bold">{venue.locations[0].name}</h3>
           <p className="text-white/70 italic flex items-center gap-2 text-sm">
-            <MapPin size={16} /> {venue.locations[0].location}
+            <MapPin size={16} /> {venue.locations[0].address || venue.locations[0].location}
           </p>
         </div>
       </div>
