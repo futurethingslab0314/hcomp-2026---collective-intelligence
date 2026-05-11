@@ -31,6 +31,8 @@ import {
   getRegistryEntry,
   parseAccommodations,
   parseCommunityPhotos,
+  parseConferenceInfoContent,
+  parseConferenceTopicBriefs,
   parseDeadlines,
   parseOrganizerPeople,
   parseOrganizers,
@@ -69,6 +71,48 @@ function getTopicSectionsFromRegistry(registryContent: RegistryContent | null) {
   }
 
   return parseTopicSections(records);
+}
+
+function getConferenceTopicBriefsFromRegistry(registryContent: RegistryContent | null) {
+  let records = getDatabaseRecords(getRegistryEntry(registryContent, 'home page', 'conference info'));
+
+  if (records.length === 0) {
+    records = getDatabaseRecords(getRegistryEntry(registryContent, 'call for participation', 'conference info'));
+  }
+
+  if (records.length === 0 && registryContent) {
+    for (const pageSections of Object.values(registryContent)) {
+      const entry = pageSections?.['conference_info'];
+      const entryRecords = getDatabaseRecords(entry ?? null);
+      if (entryRecords.length > 0) {
+        records = entryRecords;
+        break;
+      }
+    }
+  }
+
+  return parseConferenceTopicBriefs(records);
+}
+
+function getConferenceInfoContentFromRegistry(registryContent: RegistryContent | null) {
+  let records = getDatabaseRecords(getRegistryEntry(registryContent, 'home page', 'conference info'));
+
+  if (records.length === 0) {
+    records = getDatabaseRecords(getRegistryEntry(registryContent, 'call for participation', 'conference info'));
+  }
+
+  if (records.length === 0 && registryContent) {
+    for (const pageSections of Object.values(registryContent)) {
+      const entry = pageSections?.['conference_info'];
+      const entryRecords = getDatabaseRecords(entry ?? null);
+      if (entryRecords.length > 0) {
+        records = entryRecords;
+        break;
+      }
+    }
+  }
+
+  return parseConferenceInfoContent(records);
 }
 
 export default function App() {
@@ -1034,10 +1078,16 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
 function AboutLandingSection({ registryContent: _registryContent }: { registryContent: RegistryContent | null }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
-  const hasTopicSections = topicSections.hcomp.length > 0 || topicSections.ci.length > 0;
+  const conferenceInfoContent = getConferenceInfoContentFromRegistry(_registryContent);
   const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
+  const aboutParagraphs = (conferenceInfoContent.about || about.landing.content)
+    .split(/\n{2,}/)
+    .map((paragraph) => paragraph.trim())
+    .filter(Boolean);
+  const conferenceInfoText = conferenceInfoContent.conferenceInfo || about.info.content;
+  const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
 
   // Loop for the hero animation
   useEffect(() => {
@@ -1102,8 +1152,8 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
 
         <div className="fixed bottom-12 left-12 z-20 hidden md:block">
           <div className="border-l-2 border-brand-blue pl-4 space-y-1">
-            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-blue">Organization & Venue</h3>
-            <p className="text-sm font-medium text-white/80">{venueInfo}</p>
+            <h3 className="text-[10px] uppercase tracking-[0.2em] font-bold text-brand-blue">Location & Event Date</h3>
+            <p className="text-sm font-medium text-white/80">{venueInfoText}</p>
           </div>
         </div>
 
@@ -1130,7 +1180,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               {about.landing.title}
             </h2>
             <div className="max-w-4xl space-y-8">
-              {about.landing.content.split('\n\n').map((para, i) => (
+              {aboutParagraphs.map((para, i) => (
                 <p key={i} className="text-lg md:text-xl text-white/70 leading-relaxed font-light">
                   {para}
                 </p>
@@ -1155,7 +1205,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             <h2 className="text-4xl md:text-5xl font-display font-bold">{about.info.title}</h2>
             <div className="glass p-12 md:p-20 rounded-[4rem] border-brand-blue/20 bg-brand-blue/5">
               <p className="text-2xl md:text-4xl text-white/90 leading-snug font-light italic font-serif">
-                "{about.info.content}"
+                "{conferenceInfoText}"
               </p>
             </div>
           </motion.div>
@@ -1680,6 +1730,7 @@ function SubmissionSection({
 }) {
   const { cfpDetails, about, deadlines } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(registryContent);
+  const topicBriefs = getConferenceTopicBriefsFromRegistry(registryContent);
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
   const [activeTopicTrack, setActiveTopicTrack] = useState<'ci' | 'hcomp'>('hcomp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
@@ -1716,6 +1767,27 @@ function SubmissionSection({
   ];
 
   const currentTabLabel = tabs.find(t => t.id === activeTab)?.label;
+  const activeTopicBrief = activeTopicTrack === 'hcomp' ? topicBriefs.hcomp : topicBriefs.ci;
+  const fallbackTopicBrief = activeTopicTrack === 'hcomp'
+    ? [
+        'ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment. Our community studies and designs systems that combine the complementary strengths of human and artificial intelligence to achieve outcomes neither could achieve alone, in ways that are ethical, safe, and intentional. This research builds on a foundation established by the HCOMP community during its first decade as an AAAI conference series focused on human computation and crowdsourcing.',
+        'HCOMP focuses on the emerging science and practice of human-AI complementarity and alignment. As AI systems become increasingly capable, the field is expanding from studying how humans contribute to building these systems to also studying how humans and AI systems work together as complementary partners. This broader perspective situates complementarity and alignment across the full lifecycle of AI systems, from how systems are built and evaluated to how they are used and governed in practice, with attention to how responsibilities are divided, how collaboration evolves over time, and how alignment is achieved and maintained in real-world use.',
+        'While artificial intelligence (AI) and human-computer interaction (HCI) represent traditional mainstays of the conference, HCOMP believes strongly in fostering and promoting broad, interdisciplinary research. Our field is particularly unique in the diversity of disciplines it draws upon and contributes to, including human-centered qualitative studies, HCI design, social computing, machine learning, natural language processing, the broader realms of artificial intelligence (including LLMs and generative AI), economics, computational social science, digital humanities, policy, and ethics. We promote the exchange of advances in human-AI complementarity and alignment not only among researchers but also engineers and practitioners, to encourage dialogue across disciplines and communities of practice.',
+      ]
+    : [
+        'ACM Collective Intelligence is the premier venue for disseminating the latest research that advances the theoretical and empirical understanding of collective performance in diverse systems, whether biological, technological, or a combination. We are interested in research on a broad range of systems that vary in scale and scope and focus on implications for a diverse range of social, ecological, and economic outcomes.',
+        'CI has a transdisciplinary focus devoted to advancing the theoretical and empirical understanding of collective intelligence, broadly designed. The community does basic science on emergent collective phenomena, as well as designing and engineering systems for combining computational and human intelligence. We are interested in research on a broad range of phenomena that vary in scale and scope with implications for a diverse range of social, ecological, and economic outcomes.',
+        'Researchers who participate in the CI conference represent a wide and growing cross-section of social science and computer science as well the natural sciences, arts, and humanities. All types of contributions—empirical, conceptual, theoretical, quantitative, and qualitative—are welcome, including computational models.',
+      ];
+  const topicBriefParagraphs = activeTopicBrief
+    ? activeTopicBrief
+        .split(/\n{2,}/)
+        .map((paragraph) => paragraph.trim())
+        .filter(Boolean)
+    : fallbackTopicBrief;
+  const topicExampleLead = activeTopicTrack === 'hcomp'
+    ? 'Example topics for HCOMP include, but are not limited to, the following:'
+    : 'Topics include (but are not limited to) research that helps us to explain the mechanisms of emergent behavior as well as presentations of design solutions and systems engineering:';
 
   return (
     <div className="space-y-24 pb-32">
@@ -1845,21 +1917,12 @@ function SubmissionSection({
 
                 {/* Track Description Section */}
                 <div className="max-w-4xl space-y-6">
-                  {activeTopicTrack === 'hcomp' ? (
-                    <div className="space-y-6 text-sm md:text-base text-white/70 font-light leading-relaxed">
-                      <p>ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment. Our community studies and designs systems that combine the complementary strengths of human and artificial intelligence to achieve outcomes neither could achieve alone, in ways that are ethical, safe, and intentional. This research builds on a foundation established by the HCOMP community during its first decade as an AAAI conference series focused on human computation and crowdsourcing.</p>
-                      <p>HCOMP focuses on the emerging science and practice of human-AI complementarity and alignment. As AI systems become increasingly capable, the field is expanding from studying how humans contribute to building these systems to also studying how humans and AI systems work together as complementary partners. This broader perspective situates complementarity and alignment across the full lifecycle of AI systems, from how systems are built and evaluated to how they are used and governed in practice, with attention to how responsibilities are divided, how collaboration evolves over time, and how alignment is achieved and maintained in real-world use.</p>
-                      <p>While artificial intelligence (AI) and human-computer interaction (HCI) represent traditional mainstays of the conference, HCOMP believes strongly in fostering and promoting broad, interdisciplinary research. Our field is particularly unique in the diversity of disciplines it draws upon and contributes to, including human-centered qualitative studies, HCI design, social computing, machine learning, natural language processing, the broader realms of artificial intelligence (including LLMs and generative AI), economics, computational social science, digital humanities, policy, and ethics. We promote the exchange of advances in human-AI complementarity and alignment not only among researchers but also engineers and practitioners, to encourage dialogue across disciplines and communities of practice.</p>
-                      <p className="font-bold text-white">Example topics for HCOMP include, but are not limited to, the following:</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-6 text-sm md:text-base text-white/70 font-light leading-relaxed">
-                      <p>ACM Collective Intelligence is the premier venue for disseminating the latest research that advances the theoretical and empirical understanding of collective performance in diverse systems, whether biological, technological, or a combination. We are interested in research on a broad range of systems that vary in scale and scope and focus on implications for a diverse range of social, ecological, and economic outcomes.</p>
-                      <p>CI has a transdisciplinary focus devoted to advancing the theoretical and empirical understanding of collective intelligence, broadly designed. The community does basic science on emergent collective phenomena, as well as designing and engineering systems for combining computational and human intelligence. We are interested in research on a broad range of phenomena that vary in scale and scope with implications for a diverse range of social, ecological, and economic outcomes.</p>
-                      <p>Researchers who participate in the CI conference represent a wide and growing cross-section of social science and computer science as well the natural sciences, arts, and humanities. All types of contributions—empirical, conceptual, theoretical, quantitative, and qualitative—are welcome, including computational models.</p>
-                      <p className="font-bold text-white">Topics include (but are not limited to) research that helps us to explain the mechanisms of emergent behavior as well as presentations of design solutions and systems engineering:</p>
-                    </div>
-                  )}
+                  <div className="space-y-6 text-sm md:text-base text-white/70 font-light leading-relaxed">
+                    {topicBriefParagraphs.map((paragraph, index) => (
+                      <p key={`${activeTopicTrack}-brief-${index}`}>{paragraph}</p>
+                    ))}
+                    <p className="font-bold text-white">{topicExampleLead}</p>
+                  </div>
                 </div>
 
                 {activeTopicSections.length > 0 ? (

@@ -59,6 +59,17 @@ export type TopicSection = {
   conference: string;
 };
 
+export type ConferenceTopicBriefs = {
+  hcomp: string;
+  ci: string;
+};
+
+export type ConferenceInfoContent = {
+  about: string;
+  conferenceInfo: string;
+  venueInfo: string;
+};
+
 export type OrganizerPerson = {
   id: string;
   name: string;
@@ -233,6 +244,60 @@ export function parseTopicSections(records: DatabaseRecord[]) {
   }
 
   return grouped;
+}
+
+export function parseConferenceTopicBriefs(records: DatabaseRecord[]): ConferenceTopicBriefs {
+  const briefs: ConferenceTopicBriefs = {
+    hcomp: '',
+    ci: '',
+  };
+
+  for (const record of records) {
+    const conference = getStringField(record, ['conference']);
+    const brief = getStringField(record, [
+      'brief_topic_of_interests',
+      'brief topic of interests',
+      'brief_topic_of_interest',
+      'brief topic of interest',
+    ]);
+
+    if (!conference || !brief) continue;
+
+    const bucket = normalizeConferenceBucket(conference);
+    if (bucket === 'hcomp' || bucket === 'ci') {
+      briefs[bucket] = brief;
+    }
+  }
+
+  return briefs;
+}
+
+export function parseConferenceInfoContent(records: DatabaseRecord[]): ConferenceInfoContent {
+  const aboutValues = new Set<string>();
+  const conferenceInfoValues = new Set<string>();
+  const locationValues = new Set<string>();
+  const eventDateValues = new Set<string>();
+
+  for (const record of records) {
+    const about = getStringField(record, ['about']);
+    const conferenceInfo = getStringField(record, ['conference info', 'conference_info']);
+    const location = getStringField(record, ['location', 'venue', 'place']);
+    const eventDate = getStringField(record, ['event date', 'event_date', 'date']);
+
+    if (about) aboutValues.add(about);
+    if (conferenceInfo) conferenceInfoValues.add(conferenceInfo);
+    if (location) locationValues.add(location);
+    if (eventDate) eventDateValues.add(eventDate);
+  }
+
+  const locationText = Array.from(locationValues).join(' • ');
+  const eventDateText = Array.from(eventDateValues).join(' • ');
+
+  return {
+    about: Array.from(aboutValues).join('\n\n'),
+    conferenceInfo: Array.from(conferenceInfoValues).join('\n\n'),
+    venueInfo: [locationText, eventDateText].filter(Boolean).join(' • '),
+  };
 }
 
 export function parseOrganizers(records: DatabaseRecord[]) {
