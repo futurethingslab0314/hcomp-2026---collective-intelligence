@@ -414,9 +414,10 @@ export function parseBestPaperAwardText(text: string): ParsedAwardCategory[] {
       continue;
     }
 
-    // Check if this is a category header (contains "award" but doesn't start with "[")
+    // Check if this is a category header (award-related lines that aren't numbered entries)
     const isCategoryHeader =
-      /award/i.test(line) && !/^\[/.test(line) && !/^[\d]/.test(line);
+      !/^\[/.test(line) && !/^[\d]/.test(line) &&
+      (/award/i.test(line) || /finalist/i.test(line) || /honorable/i.test(line) || /^best\s/i.test(line));
 
     if (isCategoryHeader) {
       // Flush any pending title from previous category

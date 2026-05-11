@@ -606,21 +606,21 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
             <div className="space-y-16">
               {/* Dynamic parsed awards from Notion text */}
               {hasDynamicAwards && !hasStaticAwards && parsedAwards.map((category, catIndex) => {
-                const isBestPaper = /best\s*paper/i.test(category.category);
+                const isPrimaryAward = /^best\s/i.test(category.category);
                 return (
                   <div key={catIndex} className="space-y-8">
                     <div className="flex items-center gap-4">
-                      <span className={`px-4 py-1 ${isBestPaper ? 'bg-brand-teal/20 text-brand-teal' : 'bg-white/10 text-white/60'} text-[10px] font-bold uppercase tracking-widest rounded-full`}>
+                      <span className={`px-4 py-1 ${isPrimaryAward ? 'bg-brand-teal/20 text-brand-teal' : 'bg-white/10 text-white/60'} text-[10px] font-bold uppercase tracking-widest rounded-full`}>
                         {category.category}
                       </span>
-                      {!isBestPaper && <div className="h-px flex-1 bg-white/10" />}
+                      {!isPrimaryAward && <div className="h-px flex-1 bg-white/10" />}
                     </div>
                     <div className="space-y-12">
                       {category.entries.map((entry, entryIndex) => (
                         <div key={entryIndex} className="space-y-4">
-                          <h3 className={`${isBestPaper ? 'text-2xl' : 'text-xl'} font-bold leading-snug`}>{entry.title}</h3>
+                          <h3 className={`${isPrimaryAward ? 'text-2xl' : 'text-xl'} font-bold leading-snug`}>{entry.title}</h3>
                           {entry.authors && (
-                            <p className={`${isBestPaper ? 'text-white/60 text-lg' : 'text-white/40 text-base'} font-serif italic leading-relaxed`}>{entry.authors}</p>
+                            <p className={`${isPrimaryAward ? 'text-white/60 text-lg' : 'text-white/40 text-base'} font-serif italic leading-relaxed`}>{entry.authors}</p>
                           )}
                         </div>
                       ))}
