@@ -643,6 +643,47 @@ function OrganizerConferenceColumn({
   );
 }
 
+function GeneralChairFeature({
+  person,
+  fallbackName,
+  fallbackOrg,
+  accentClass,
+  borderClass,
+  bgClass,
+}: {
+  person?: OrganizerGroups['hcomp'][number];
+  fallbackName: string;
+  fallbackOrg: string;
+  accentClass: string;
+  borderClass: string;
+  bgClass: string;
+}) {
+  const name = person?.name || fallbackName;
+  const org = person?.org || fallbackOrg;
+  const photo = person?.photo;
+
+  return (
+    <div className="p-0 h-full flex items-center gap-5">
+      {photo ? (
+        <img
+          src={photo}
+          alt={name}
+          className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] object-cover border ${borderClass} shadow-xl`}
+        />
+      ) : (
+        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] border ${borderClass} ${bgClass} flex items-center justify-center text-2xl font-bold ${accentClass}`}>
+          {name[0]}
+        </div>
+      )}
+      <div className="space-y-1">
+        <div className={`text-xs uppercase tracking-widest font-bold ${accentClass}`}>General Chair</div>
+        <div className="text-xl md:text-2xl font-bold leading-tight">{name}</div>
+        <div className="text-sm text-white/40 italic font-serif">{org}</div>
+      </div>
+    </div>
+  );
+}
+
 function PastMeetingsSection({ 
   onShowAwards, 
   activeTab, 
@@ -1079,6 +1120,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(_registryContent);
+  const [homeOrganizers, setHomeOrganizers] = useState<OrganizerGroups>({ hcomp: [], ci: [] });
   const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
@@ -1088,6 +1130,8 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
     .filter(Boolean);
   const conferenceInfoText = conferenceInfoContent.conferenceInfo || about.info.content;
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
+  const hcompGeneralChair = homeOrganizers.hcomp.find((person) => person.role.toLowerCase().includes('general chair'));
+  const ciGeneralChair = homeOrganizers.ci.find((person) => person.role.toLowerCase().includes('general chair'));
 
   // Loop for the hero animation
   useEffect(() => {
@@ -1098,6 +1142,27 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
       return () => clearTimeout(timer);
     }
   }, [isHeroLoading]);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadOrganizers = async () => {
+      try {
+        const organizers = await fetchOrganizers();
+        if (isMounted) {
+          setHomeOrganizers(organizers);
+        }
+      } catch (error) {
+        console.error('Failed to load homepage organizers from Notion API.', error);
+      }
+    };
+
+    void loadOrganizers();
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   return (
     <div 
@@ -1239,11 +1304,14 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             onMouseEnter={() => setHoveredTrack(1)}
             onMouseLeave={() => setHoveredTrack(null)}
           >
-            <div className="p-0 h-full flex flex-col justify-center">
-              <div className="text-xs uppercase tracking-widest text-brand-teal font-bold mb-1">General Chair</div>
-              <div className="text-xl md:text-2xl font-bold">{about.chairs[1].name}</div>
-              <div className="text-sm text-white/40 italic font-serif">{about.chairs[1].org}</div>
-            </div>
+            <GeneralChairFeature
+              person={hcompGeneralChair}
+              fallbackName={about.chairs[1].name}
+              fallbackOrg={about.chairs[1].org}
+              accentClass="text-brand-teal"
+              borderClass="border-brand-teal/20"
+              bgClass="bg-brand-teal/10"
+            />
           </div>
 
           {/* Description Row T1 */}
@@ -1297,9 +1365,6 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             onMouseEnter={() => setHoveredTrack(1)}
             onMouseLeave={() => setHoveredTrack(null)}
           >
-            <div className="text-[10px] uppercase tracking-widest text-brand-teal font-bold mb-2">Program Co-Chairs</div>
-            <div className="text-xs text-white/60 leading-relaxed italic mb-8">{about.hcomp.programChairs}</div>
-            
             <button 
               onClick={() => {
                 window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings', tab: 'hcomp' } }));
@@ -1328,11 +1393,14 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             onMouseEnter={() => setHoveredTrack(2)}
             onMouseLeave={() => setHoveredTrack(null)}
           >
-            <div className="p-0 h-full flex flex-col justify-center">
-              <div className="text-xs uppercase tracking-widest text-brand-purple font-bold mb-1">General Chair</div>
-              <div className="text-xl md:text-2xl font-bold">{about.chairs[0].name}</div>
-              <div className="text-sm text-white/40 italic font-serif">{about.chairs[0].org}</div>
-            </div>
+            <GeneralChairFeature
+              person={ciGeneralChair}
+              fallbackName={about.chairs[0].name}
+              fallbackOrg={about.chairs[0].org}
+              accentClass="text-brand-purple"
+              borderClass="border-brand-purple/20"
+              bgClass="bg-brand-purple/10"
+            />
           </div>
 
           {/* Description Row T2 */}
@@ -1386,9 +1454,6 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             onMouseEnter={() => setHoveredTrack(2)}
             onMouseLeave={() => setHoveredTrack(null)}
           >
-            <div className="text-[10px] uppercase tracking-widest text-brand-purple font-bold mb-2">Program Co-Chairs</div>
-            <div className="text-xs text-white/60 leading-relaxed italic mb-8">{about.ci.programChairs}</div>
-            
             <button 
               onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings', tab: 'ci' } }))}
               className="inline-flex items-center gap-2 px-6 py-2 rounded-full border border-brand-purple/30 text-brand-purple text-xs font-bold hover:bg-brand-purple hover:text-white transition-all group cursor-pointer"
