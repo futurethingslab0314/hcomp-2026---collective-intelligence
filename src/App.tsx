@@ -37,6 +37,7 @@ import {
   parseOrganizers,
   parsePastMeetings,
   parsePastReports,
+  parseBestPaperAwardText,
   parseProgram,
   parseSponsorLogos,
   parseSponsorTierRows,
@@ -553,10 +554,23 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
   const staticMeeting = PAST_HCOMP_MEETINGS.find(m => m.year === year);
   const dynamicMeeting = dynamicMeetings?.find(m => m.year === year);
   const meeting = staticMeeting;
+
+  // Parse dynamic award text into structured categories
+  const parsedAwards = dynamicMeeting?.bestPaperAward
+    ? parseBestPaperAwardText(dynamicMeeting.bestPaperAward)
+    : [];
+
+  // Determine if we have any award content to show
+  const hasStaticAwards = meeting?.awards?.bestPaper || (meeting?.awards?.honorableMentions && meeting.awards.honorableMentions.length > 0);
+  const hasDynamicAwards = parsedAwards.length > 0;
+  const hasAnyAwards = hasStaticAwards || hasDynamicAwards;
+
+  // Get proceedings URL from dynamic or static data
+  const proceedingsUrl = dynamicMeeting?.proceedings || meeting?.proceedings;
   
   return (
     <AnimatePresence>
-      {year && meeting && (
+      {year && (meeting || dynamicMeeting) && (
         <>
           {/* Backdrop */}
           <motion.div
@@ -590,25 +604,45 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
             </div>
 
             <div className="space-y-16">
-              {(meeting.awards?.bestPaper || dynamicMeeting?.bestPaperAward) ? (
+              {/* Dynamic parsed awards from Notion text */}
+              {hasDynamicAwards && !hasStaticAwards && parsedAwards.map((category, catIndex) => {
+                const isBestPaper = /best\s*paper/i.test(category.category);
+                return (
+                  <div key={catIndex} className="space-y-8">
+                    <div className="flex items-center gap-4">
+                      <span className={`px-4 py-1 ${isBestPaper ? 'bg-brand-teal/20 text-brand-teal' : 'bg-white/10 text-white/60'} text-[10px] font-bold uppercase tracking-widest rounded-full`}>
+                        {category.category}
+                      </span>
+                      {!isBestPaper && <div className="h-px flex-1 bg-white/10" />}
+                    </div>
+                    <div className="space-y-12">
+                      {category.entries.map((entry, entryIndex) => (
+                        <div key={entryIndex} className="space-y-4">
+                          <h3 className={`${isBestPaper ? 'text-2xl' : 'text-xl'} font-bold leading-snug`}>{entry.title}</h3>
+                          {entry.authors && (
+                            <p className={`${isBestPaper ? 'text-white/60 text-lg' : 'text-white/40 text-base'} font-serif italic leading-relaxed`}>{entry.authors}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+
+              {/* Static awards from hardcoded data (takes priority when available) */}
+              {meeting?.awards?.bestPaper && (
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <span className="px-4 py-1 bg-brand-teal/20 text-brand-teal text-[10px] font-bold uppercase tracking-widest rounded-full">Best Paper Award</span>
                   </div>
-                  {meeting.awards?.bestPaper ? (
-                    <div className="space-y-4">
-                      <h3 className="text-2xl font-bold leading-snug">{meeting.awards.bestPaper.title}</h3>
-                      <p className="text-white/60 font-serif italic text-lg leading-relaxed">{meeting.awards.bestPaper.authors}</p>
-                    </div>
-                  ) : dynamicMeeting?.bestPaperAward ? (
-                    <div className="space-y-4">
-                      <p className="text-xl font-bold leading-snug">{dynamicMeeting.bestPaperAward}</p>
-                    </div>
-                  ) : null}
+                  <div className="space-y-4">
+                    <h3 className="text-2xl font-bold leading-snug">{meeting.awards.bestPaper.title}</h3>
+                    <p className="text-white/60 font-serif italic text-lg leading-relaxed">{meeting.awards.bestPaper.authors}</p>
+                  </div>
                 </div>
-              ) : null}
+              )}
 
-              {meeting.awards?.honorableMentions && meeting.awards.honorableMentions.length > 0 && (
+              {meeting?.awards?.honorableMentions && meeting.awards.honorableMentions.length > 0 && (
                 <div className="space-y-8">
                   <div className="flex items-center gap-4">
                     <span className="px-4 py-1 bg-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest rounded-full">Honorable Mention Paper Awards</span>
@@ -625,24 +659,26 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
                 </div>
               )}
 
-              {(!meeting?.awards || (!meeting.awards.bestPaper && !meeting.awards.honorableMentions)) && !dynamicMeeting?.bestPaperAward && (
+              {!hasAnyAwards && (
                 <div className="text-center py-20 text-white/30 italic font-serif">
                   Award metadata for this year is being transitioned to the digital archive.
                 </div>
               )}
             </div>
 
-            <div className="mt-20 pt-12 border-t border-white/5 text-center">
-               <a 
-                href={meeting.proceedings}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-2 text-brand-teal font-bold group"
-               >
-                 Read these papers in the full proceedings
-                 <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
-               </a>
-            </div>
+            {proceedingsUrl && (
+              <div className="mt-20 pt-12 border-t border-white/5 text-center">
+                 <a 
+                  href={proceedingsUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 text-brand-teal font-bold group"
+                 >
+                   Read these papers in the full proceedings
+                   <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                 </a>
+              </div>
+            )}
           </motion.div>
         </>
       )}

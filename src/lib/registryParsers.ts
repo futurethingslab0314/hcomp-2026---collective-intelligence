@@ -370,3 +370,104 @@ export function parsePastReports(records: DatabaseRecord[]) {
     }))
     .filter((item) => item.name || item.link);
 }
+
+export type ParsedAwardEntry = {
+  title: string;
+  authors: string;
+};
+
+export type ParsedAwardCategory = {
+  category: string;
+  entries: ParsedAwardEntry[];
+};
+
+/**
+ * Parse a "best paper award" text field from Notion into structured award data.
+ *
+ * Expected format (from Notion rich text):
+ *   Best Paper Award
+ *   [1] Paper Title Here
+ *   Author One, Author Two and Author Three
+ *
+ *   Honorable Mention Paper Awards
+ *   [1] Paper Title Here
+ *   Author One, Author Two
+ *
+ *   [2] Another Paper Title
+ *   Author Three, Author Four
+ */
+export function parseBestPaperAwardText(text: string): ParsedAwardCategory[] {
+  if (!text || !text.trim()) return [];
+
+  const lines = text.split('\n').map((line) => line.trim());
+  const categories: ParsedAwardCategory[] = [];
+  let currentCategory: ParsedAwardCategory | null = null;
+  let pendingTitle: string | null = null;
+
+  for (const line of lines) {
+    if (!line) {
+      // Empty line — flush pending title without authors
+      if (pendingTitle && currentCategory) {
+        currentCategory.entries.push({ title: pendingTitle, authors: '' });
+        pendingTitle = null;
+      }
+      continue;
+    }
+
+    // Check if this is a category header (contains "award" but doesn't start with "[")
+    const isCategoryHeader =
+      /award/i.test(line) && !/^\[/.test(line) && !/^[\d]/.test(line);
+
+    if (isCategoryHeader) {
+      // Flush any pending title from previous category
+      if (pendingTitle && currentCategory) {
+        currentCategory.entries.push({ title: pendingTitle, authors: '' });
+        pendingTitle = null;
+      }
+      currentCategory = { category: line, entries: [] };
+      categories.push(currentCategory);
+      continue;
+    }
+
+    // Check if this line starts with [N] — it's a title line
+    const titleMatch = line.match(/^\[\d+\]\s*(.*)/);
+    if (titleMatch) {
+      // Flush previous pending title
+      if (pendingTitle && currentCategory) {
+        currentCategory.entries.push({ title: pendingTitle, authors: '' });
+      }
+      pendingTitle = titleMatch[1].trim();
+      continue;
+    }
+
+    // Otherwise, if we have a pending title, this line is the authors
+    if (pendingTitle && currentCategory) {
+      currentCategory.entries.push({ title: pendingTitle, authors: line });
+      pendingTitle = null;
+      continue;
+    }
+
+    // If no category yet but line looks like a standalone title (no [N] prefix),
+    // create a default category
+    if (!currentCategory) {
+      currentCategory = { category: 'Award', entries: [] };
+      categories.push(currentCategory);
+    }
+
+    // Treat as a title without [N] prefix
+    if (!pendingTitle) {
+      pendingTitle = line;
+    } else {
+      // This is authors for the pending title
+      currentCategory.entries.push({ title: pendingTitle, authors: line });
+      pendingTitle = null;
+    }
+  }
+
+  // Flush any remaining pending title
+  if (pendingTitle && currentCategory) {
+    currentCategory.entries.push({ title: pendingTitle, authors: '' });
+  }
+
+  return categories;
+}
