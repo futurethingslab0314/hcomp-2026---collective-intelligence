@@ -35,11 +35,13 @@ import {
   parseDeadlines,
   parseOrganizerPeople,
   parseOrganizers,
+  parsePastMeetings,
   parseProgram,
   parseSponsorLogos,
   parseSponsorTierRows,
   parseTransportation,
   parseVenueLocations,
+  type PastMeetingRecord,
 } from './lib/registryParsers';
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
@@ -94,7 +96,7 @@ export default function App() {
       organization: [],
       sponsors: ['sponsor page', 'organizer page', 'organizers page'],
       coc: ['code of conduct'],
-      'past-meetings': [],
+      'past-meetings': ['past meetings'],
     };
 
     const loadRegistry = async () => {
@@ -256,6 +258,7 @@ export default function App() {
                 onShowAwards={setSelectedAwardYear} 
                 activeTab={activePastMeetingTab}
                 setActiveTab={setActivePastMeetingTab}
+                registryContent={registryContent}
               />
             )}
           </motion.div>
@@ -264,7 +267,12 @@ export default function App() {
 
       <AwardDrawer 
         year={selectedAwardYear} 
-        onClose={() => setSelectedAwardYear(null)} 
+        onClose={() => setSelectedAwardYear(null)}
+        dynamicMeetings={(() => {
+          const entry = getRegistryEntry(registryContent, 'past meetings', 'past meetings');
+          const records = getDatabaseRecords(entry);
+          return records.length > 0 ? parsePastMeetings(records).hcomp : undefined;
+        })()}
       />
     </div>
   );
@@ -470,12 +478,18 @@ function OrganizerConferenceColumn({
 function PastMeetingsSection({ 
   onShowAwards, 
   activeTab, 
-  setActiveTab 
+  setActiveTab,
+  registryContent,
 }: { 
   onShowAwards: (year: number) => void,
   activeTab: 'hcomp' | 'ci',
-  setActiveTab: (tab: 'hcomp' | 'ci') => void
+  setActiveTab: (tab: 'hcomp' | 'ci') => void,
+  registryContent: RegistryContent | null,
 }) {
+  const entry = getRegistryEntry(registryContent, 'past meetings', 'past meetings');
+  const records = getDatabaseRecords(entry);
+  const dynamicMeetings = records.length > 0 ? parsePastMeetings(records) : null;
+
   return (
     <div className="space-y-24 pb-32">
       <div className="space-y-8">
@@ -520,17 +534,19 @@ function PastMeetingsSection({
         transition={{ duration: 0.3 }}
       >
         {activeTab === 'hcomp' ? (
-          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader />
+          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} />
         ) : (
-          <PastCISection hideHeader />
+          <PastCISection hideHeader dynamicMeetings={dynamicMeetings?.ci} />
         )}
       </motion.div>
     </div>
   );
 }
 
-function AwardDrawer({ year, onClose }: { year: number | null, onClose: () => void }) {
-  const meeting = PAST_HCOMP_MEETINGS.find(m => m.year === year);
+function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, onClose: () => void, dynamicMeetings?: PastMeetingRecord[] }) {
+  const staticMeeting = PAST_HCOMP_MEETINGS.find(m => m.year === year);
+  const dynamicMeeting = dynamicMeetings?.find(m => m.year === year);
+  const meeting = staticMeeting;
   
   return (
     <AnimatePresence>
@@ -568,15 +584,21 @@ function AwardDrawer({ year, onClose }: { year: number | null, onClose: () => vo
             </div>
 
             <div className="space-y-16">
-              {meeting.awards?.bestPaper ? (
+              {(meeting.awards?.bestPaper || dynamicMeeting?.bestPaperAward) ? (
                 <div className="space-y-6">
                   <div className="flex items-center gap-4">
                     <span className="px-4 py-1 bg-brand-teal/20 text-brand-teal text-[10px] font-bold uppercase tracking-widest rounded-full">Best Paper Award</span>
                   </div>
-                  <div className="space-y-4">
-                    <h3 className="text-2xl font-bold leading-snug">{meeting.awards.bestPaper.title}</h3>
-                    <p className="text-white/60 font-serif italic text-lg leading-relaxed">{meeting.awards.bestPaper.authors}</p>
-                  </div>
+                  {meeting.awards?.bestPaper ? (
+                    <div className="space-y-4">
+                      <h3 className="text-2xl font-bold leading-snug">{meeting.awards.bestPaper.title}</h3>
+                      <p className="text-white/60 font-serif italic text-lg leading-relaxed">{meeting.awards.bestPaper.authors}</p>
+                    </div>
+                  ) : dynamicMeeting?.bestPaperAward ? (
+                    <div className="space-y-4">
+                      <p className="text-xl font-bold leading-snug">{dynamicMeeting.bestPaperAward}</p>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
 
@@ -597,7 +619,7 @@ function AwardDrawer({ year, onClose }: { year: number | null, onClose: () => vo
                 </div>
               )}
 
-              {(!meeting.awards || (!meeting.awards.bestPaper && !meeting.awards.honorableMentions)) && (
+              {(!meeting?.awards || (!meeting.awards.bestPaper && !meeting.awards.honorableMentions)) && !dynamicMeeting?.bestPaperAward && (
                 <div className="text-center py-20 text-white/30 italic font-serif">
                   Award metadata for this year is being transitioned to the digital archive.
                 </div>
@@ -622,8 +644,10 @@ function AwardDrawer({ year, onClose }: { year: number | null, onClose: () => vo
   );
 }
 
-function PastCISection({ hideHeader = false }: { hideHeader?: boolean }) {
-  const ciMeetings = PAST_CI_MEETINGS;
+function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
+  const ciMeetings = dynamicMeetings && dynamicMeetings.length > 0
+    ? dynamicMeetings.map(m => ({ year: m.year, location: m.location, website: m.website }))
+    : PAST_CI_MEETINGS;
 
   return (
     <div className="space-y-16 pb-32">
@@ -704,8 +728,16 @@ function PastCISection({ hideHeader = false }: { hideHeader?: boolean }) {
   );
 }
 
-function PastHCOMPSection({ onShowAwards, hideHeader = false }: { onShowAwards: (year: number) => void, hideHeader?: boolean }) {
-  const hcompMeetings = PAST_HCOMP_MEETINGS;
+function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings }: { onShowAwards: (year: number) => void, hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
+  const hcompMeetings = dynamicMeetings && dynamicMeetings.length > 0
+    ? dynamicMeetings.map(m => ({
+        year: m.year,
+        location: m.location,
+        theme: '',
+        website: m.website,
+        proceedings: m.proceedings,
+      }))
+    : PAST_HCOMP_MEETINGS;
 
   return (
     <div className="space-y-16 pb-32">

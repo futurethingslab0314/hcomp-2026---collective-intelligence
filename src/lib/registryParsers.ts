@@ -319,3 +319,40 @@ export function parseSponsorTierRows(records: DatabaseRecord[]) {
     bronze: tierValues.bronze[feature] ?? '',
   }));
 }
+
+export type PastMeetingRecord = {
+  year: number;
+  name: string;
+  location: string;
+  website: string;
+  proceedings: string;
+  bestPaperAward: string;
+  conference: string;
+};
+
+export function parsePastMeetings(records: DatabaseRecord[]) {
+  const all: PastMeetingRecord[] = records
+    .map((record) => {
+      const yearRaw = record.fields['year'] ?? record.fields['Year'];
+      const year = typeof yearRaw === 'number' ? yearRaw : Number(getStringField(record, ['year']));
+      if (!year || isNaN(year)) return null;
+
+      return {
+        year,
+        name: getStringField(record, ['name', 'title']),
+        location: getStringField(record, ['location', 'city', 'place']),
+        website: getStringField(record, ['website', 'url', 'link']),
+        proceedings: getStringField(record, ['proceedings', 'proceeding', 'proceedings url']),
+        bestPaperAward: getStringField(record, ['best paper award', 'best paper', 'award']),
+        conference: getStringField(record, ['conference']),
+      };
+    })
+    .filter(Boolean) as PastMeetingRecord[];
+
+  all.sort((a, b) => b.year - a.year);
+
+  const hcomp = all.filter((m) => m.conference.toLowerCase().includes('hcomp'));
+  const ci = all.filter((m) => m.conference.toLowerCase().includes('ci'));
+
+  return { hcomp, ci };
+}
