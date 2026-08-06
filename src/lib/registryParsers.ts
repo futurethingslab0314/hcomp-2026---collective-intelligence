@@ -65,6 +65,7 @@ export type ConferenceTopicBriefs = {
 };
 
 export type ConferenceInfoContent = {
+  year: string;
   heroName: string;
   heroLongName: string;
   about: string;
@@ -292,6 +293,7 @@ export function parseConferenceInfoContent(records: DatabaseRecord[]): Conferenc
   const eventDateText = Array.from(eventDateValues).join(' • ');
 
   return {
+    year: mainRecord ? getStringField(mainRecord, ['year']) : '',
     heroName: mainRecord ? getStringField(mainRecord, ['name']) : '',
     heroLongName: mainRecord ? getStringField(mainRecord, ['long name', 'long_name']) : '',
     about: mainRecord ? getStringField(mainRecord, ['about']) : '',

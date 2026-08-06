@@ -115,6 +115,10 @@ function getConferenceInfoContentFromRegistry(registryContent: RegistryContent |
   return parseConferenceInfoContent(records);
 }
 
+function withConferenceYear(value: string, conferenceYear: string) {
+  return value.replaceAll(CONFERENCE_CONTENT.hero.year, conferenceYear);
+}
+
 export default function App() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionId>('home');
@@ -123,6 +127,9 @@ export default function App() {
   const [activePastMeetingTab, setActivePastMeetingTab] = useState<'hcomp' | 'ci'>('hcomp');
   const [registryContent, setRegistryContent] = useState<RegistryContent | null>(null);
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
+  const conferenceInfoContent = getConferenceInfoContentFromRegistry(registryContent);
+  const conferenceYear = conferenceInfoContent.year.trim() || CONFERENCE_CONTENT.hero.year;
+  const shortConferenceYear = conferenceYear.slice(-2);
 
   // Apply colors to CSS variables
   useEffect(() => {
@@ -198,6 +205,10 @@ export default function App() {
     };
   }, [activeSection]);
 
+  useEffect(() => {
+    document.title = `HCOMP ${conferenceYear}`;
+  }, [conferenceYear]);
+
   const sections = [
     { id: 'submission', label: 'Call for Participation', icon: FileText },
     { id: 'venue', label: 'Attend', icon: MapPin },
@@ -231,7 +242,7 @@ export default function App() {
             className="flex items-center gap-3 transition-transform hover:scale-105 group cursor-pointer"
           >
             <div className="text-left">
-              <div className="text-[18px] md:text-[22px] font-bold tracking-tighter leading-none text-white">HCOMP'26</div>
+              <div className="text-[18px] md:text-[22px] font-bold tracking-tighter leading-none text-white">HCOMP'{shortConferenceYear}</div>
             </div>
           </button>
 
@@ -315,12 +326,12 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} />}
-            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
-            {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceYear={conferenceYear} />}
+            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
+            {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
-            {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} />}
-            {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
+            {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
+            {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
             {activeSection === 'coc' && <CodeOfConductSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'past-meetings' && (
               <PastMeetingsSection 
@@ -328,6 +339,7 @@ export default function App() {
                 activeTab={activePastMeetingTab}
                 setActiveTab={setActivePastMeetingTab}
                 registryContent={registryContent}
+                conferenceYear={conferenceYear}
               />
             )}
           </motion.div>
@@ -367,10 +379,12 @@ function OrganizerMiniGrid({
   title,
   people,
   accentClass,
+  conferenceYear,
 }: {
   title: string;
   people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string; order?: number }>;
   accentClass: string;
+  conferenceYear: string;
 }) {
   if (people.length === 0) {
     return null;
@@ -454,8 +468,8 @@ function OrganizerMiniGrid({
         <div className="h-px flex-1 bg-white/10" />
       </div>
       <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {renderPeople(grouped.hcomp, 'HCOMP 2026', 'text-brand-teal', 'HCOMP 2026 organizers will be listed here soon.')}
-        {renderPeople(grouped.ci, 'CI 2026', 'text-brand-purple', 'CI 2026 organizers will be listed here soon.')}
+        {renderPeople(grouped.hcomp, `HCOMP ${conferenceYear}`, 'text-brand-teal', `HCOMP ${conferenceYear} organizers will be listed here soon.`)}
+        {renderPeople(grouped.ci, `CI ${conferenceYear}`, 'text-brand-purple', `CI ${conferenceYear} organizers will be listed here soon.`)}
       </div>
       {fallbackPeople.length > 0 ? (
         <div className="space-y-4">
@@ -510,8 +524,10 @@ function ComingSoonPanel({
 
 function SponsorContactsGrid({
   people,
+  conferenceYear,
 }: {
   people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string }>;
+  conferenceYear: string;
 }) {
   if (people.length === 0) {
     return null;
@@ -554,7 +570,7 @@ function SponsorContactsGrid({
                   <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{group.role}</div>
                   <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
                   <div className="text-[10px] uppercase tracking-widest text-brand-blue font-bold">
-                    {person.conference?.includes('CI') ? 'CI 2026' : 'HCOMP 2026'}
+                    {person.conference?.includes('CI') ? `CI ${conferenceYear}` : `HCOMP ${conferenceYear}`}
                   </div>
                   <div className="text-sm text-white/50">{person.org}</div>
                   {person.email ? (
@@ -689,11 +705,13 @@ function PastMeetingsSection({
   activeTab, 
   setActiveTab,
   registryContent,
+  conferenceYear,
 }: { 
   onShowAwards: (year: number) => void,
   activeTab: 'hcomp' | 'ci',
   setActiveTab: (tab: 'hcomp' | 'ci') => void,
   registryContent: RegistryContent | null,
+  conferenceYear: string,
 }) {
   const entry = getRegistryEntry(registryContent, 'past meetings', 'past meetings');
   const records = getDatabaseRecords(entry);
@@ -771,9 +789,9 @@ function PastMeetingsSection({
         transition={{ duration: 0.3 }}
       >
         {activeTab === 'hcomp' ? (
-          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} dynamicReports={dynamicReports} />
+          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} dynamicReports={dynamicReports} conferenceYear={conferenceYear} />
         ) : (
-          <PastCISection hideHeader dynamicMeetings={dynamicMeetings?.ci} />
+          <PastCISection hideHeader dynamicMeetings={dynamicMeetings?.ci} conferenceYear={conferenceYear} />
         )}
       </motion.div>
     </div>
@@ -884,7 +902,15 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
   );
 }
 
-function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[] }) {
+function PastCISection({
+  hideHeader = false,
+  dynamicMeetings,
+  conferenceYear,
+}: {
+  hideHeader?: boolean;
+  dynamicMeetings?: PastMeetingRecord[];
+  conferenceYear: string;
+}) {
   const ciMeetings = dynamicMeetings && dynamicMeetings.length > 0
     ? dynamicMeetings.map(m => ({
         year: m.year,
@@ -903,7 +929,7 @@ function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: b
             onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: 'home' }))}
             className="flex items-center gap-2 text-brand-purple font-bold text-sm hover:translate-x-1 transition-transform cursor-pointer"
           >
-            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'26
+            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'{conferenceYear.slice(-2)}
           </button>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="space-y-4">
@@ -980,7 +1006,19 @@ function PastCISection({ hideHeader = false, dynamicMeetings }: { hideHeader?: b
   );
 }
 
-function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, dynamicReports }: { onShowAwards: (year: number) => void, hideHeader?: boolean, dynamicMeetings?: PastMeetingRecord[], dynamicReports?: PastReportRecord[] | null }) {
+function PastHCOMPSection({
+  onShowAwards,
+  hideHeader = false,
+  dynamicMeetings,
+  dynamicReports,
+  conferenceYear,
+}: {
+  onShowAwards: (year: number) => void;
+  hideHeader?: boolean;
+  dynamicMeetings?: PastMeetingRecord[];
+  dynamicReports?: PastReportRecord[] | null;
+  conferenceYear: string;
+}) {
   const hcompMeetings = dynamicMeetings && dynamicMeetings.length > 0
     ? dynamicMeetings.map(m => ({
         year: m.year,
@@ -1004,7 +1042,7 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
             onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: 'home' }))}
             className="flex items-center gap-2 text-brand-teal font-bold text-sm hover:translate-x-1 transition-transform cursor-pointer"
           >
-            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'26
+            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'{conferenceYear.slice(-2)}
           </button>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="space-y-4">
@@ -1116,7 +1154,13 @@ function PastHCOMPSection({ onShowAwards, hideHeader = false, dynamicMeetings, d
   );
 }
 
-function AboutLandingSection({ registryContent: _registryContent }: { registryContent: RegistryContent | null }) {
+function AboutLandingSection({
+  registryContent: _registryContent,
+  conferenceYear,
+}: {
+  registryContent: RegistryContent | null;
+  conferenceYear: string;
+}) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(_registryContent);
@@ -1131,7 +1175,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
   const conferenceInfoText = conferenceInfoContent.conferenceInfo || about.info.content;
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
   const heroTitle = conferenceInfoContent.heroName || hero.title;
-  const heroSubtitle = conferenceInfoContent.heroLongName || hero.subtitle;
+  const heroSubtitle = conferenceInfoContent.heroLongName || withConferenceYear(hero.subtitle, conferenceYear);
   const hcompGeneralChair = homeOrganizers.hcomp.find((person) => person.role.toLowerCase().includes('general chair'));
   const ciGeneralChair = homeOrganizers.ci.find((person) => person.role.toLowerCase().includes('general chair'));
 
@@ -1190,7 +1234,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
             transition={{ duration: 0.8, ease: "easeOut" }}
           >
             {heroTitle}<br />
-            {hero.year}
+            {conferenceYear}
           </motion.h1>
           
           <motion.p 
@@ -1284,7 +1328,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
         <div className="space-y-6 text-center max-w-4xl mx-auto">
           <h2 className="text-4xl md:text-5xl font-display font-bold">Joint Track Experience</h2>
           <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed">
-            This year, the conference will be co-located and tightly integrated with the 2026 ACM Collective Intelligence (CI) Conference, creating a unique synergy between researchers in human-AI collaboration and collective intelligence.
+            This year, the conference will be co-located and tightly integrated with the {conferenceYear} ACM Collective Intelligence (CI) Conference, creating a unique synergy between researchers in human-AI collaboration and collective intelligence.
           </p>
         </div>
         
@@ -1356,7 +1400,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               </div>
             ) : (
               <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
-                Topics of Interest for HCOMP 2026 are coming soon.
+                Topics of Interest for HCOMP {conferenceYear} are coming soon.
               </div>
             )}
           </div>
@@ -1445,7 +1489,7 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
               </div>
             ) : (
               <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
-                Topics of Interest for CI 2026 are coming soon.
+                Topics of Interest for CI {conferenceYear} are coming soon.
               </div>
             )}
           </div>
@@ -1478,9 +1522,11 @@ function AboutLandingSection({ registryContent: _registryContent }: { registryCo
 function SponsorsSection({
   registryContent,
   isLoadingRegistry,
+  conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceYear: string;
 }) {
   const callForSponsorBlocks = getPageBlocks(getRegistryEntry(registryContent, 'sponsor page', 'call for sponsor'));
   const sponsorLogoItems = parseSponsorLogos(
@@ -1618,7 +1664,7 @@ function SponsorsSection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-12">
           <div className="space-y-6">
             <p className="text-white/70 leading-relaxed">
-              Partnering with HCOMP 2026 as a sponsor offers your organization a unique opportunity to be at the forefront of innovation in human computation and crowdsourcing – a fundamentally important field in creating and propagating better AI. 
+              Partnering with HCOMP {conferenceYear} as a sponsor offers your organization a unique opportunity to be at the forefront of innovation in human computation and crowdsourcing – a fundamentally important field in creating and propagating better AI.
             </p>
             <p className="text-white/70 leading-relaxed">
               HCOMP is a cross-disciplinary conference fostering an inclusive atmosphere that encourages active participation from both industry and academia to share their expertise, collaborate, and advance the field's frontiers.
@@ -1747,7 +1793,7 @@ function SponsorsSection({
         </div>
 
         {sponsorContacts.length > 0 ? (
-          <SponsorContactsGrid people={sponsorContacts} />
+          <SponsorContactsGrid people={sponsorContacts} conferenceYear={conferenceYear} />
         ) : null}
       </div>
     </div>
@@ -1791,9 +1837,11 @@ function CodeOfConductSection({
 function SubmissionSection({
   registryContent,
   isLoadingRegistry,
+  conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceYear: string;
 }) {
   const { cfpDetails, about, deadlines } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(registryContent);
@@ -2013,7 +2061,7 @@ function SubmissionSection({
                 ) : (
                   <ComingSoonPanel
                     title="Coming soon!"
-                    message={`Topics of Interest for ${activeTopicTrack.toUpperCase()} 2026 will appear here once they are published.`}
+                    message={`Topics of Interest for ${activeTopicTrack.toUpperCase()} ${conferenceYear} will appear here once they are published.`}
                   />
                 )}
               </div>
@@ -2053,7 +2101,7 @@ function SubmissionSection({
                     <div className="space-y-8">
                       <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
                       <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                        <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP 2026 employ the following policy on the use of Large Language Models in authoring submissions.</p>
+                        <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP {conferenceYear} employ the following policy on the use of Large Language Models in authoring submissions.</p>
                         <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
                         <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
                       </div>
@@ -2112,7 +2160,7 @@ function SubmissionSection({
                   <div className="max-w-5xl">
                     <NotionContentRenderer blocks={papersAndTalksBlocks} />
                   </div>
-                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
                 </div>
               ) : (
                 <>
@@ -2182,11 +2230,21 @@ function SubmissionSection({
                       {cfpDetails.sections.map((section: any, i: number) => (
                         <div key={i} className="space-y-4">
                           <h4 className="font-bold text-white/90 underline decoration-white/10 underline-offset-4">{section.title}</h4>
-                          {section.content && <p className="text-sm text-white/60 font-light leading-relaxed">{section.content}</p>}
+                          {section.content && (
+                            <p className="text-sm text-white/60 font-light leading-relaxed">
+                              {section.title === 'ACM Publication Policies'
+                                ? section.content
+                                : withConferenceYear(section.content, conferenceYear)}
+                            </p>
+                          )}
                           {section.subsections?.map((sub: any, k: number) => (
                             <div key={k} className="space-y-1 pl-4 border-l border-white/10">
                               <div className="text-brand-blue font-bold text-xs">{sub.title}</div>
-                              <div className="text-xs text-white/50">{sub.content}</div>
+                              <div className="text-xs text-white/50">
+                                {section.title === 'ACM Publication Policies'
+                                  ? sub.content
+                                  : withConferenceYear(sub.content, conferenceYear)}
+                              </div>
                             </div>
                           ))}
                         </div>
@@ -2203,7 +2261,7 @@ function SubmissionSection({
                       </div>
                     </div>
                   </div>
-                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
                 </>
               )}
             </section>
@@ -2219,7 +2277,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={postersAndDemosBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2232,7 +2290,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Posters and Demos call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2247,7 +2305,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={doctoralConsortiumBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2260,7 +2318,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Doctoral Consortium will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2275,7 +2333,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={workshopsBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2288,7 +2346,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Workshops call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2303,7 +2361,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={crowdcampBlocks} />
                 </div>
-                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2316,7 +2374,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the CrowdCamp call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" />
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2485,8 +2543,10 @@ function ProgramSection({
 
 function OrgSection({
   isLoadingRegistry,
+  conferenceYear,
 }: {
   isLoadingRegistry: boolean;
+  conferenceYear: string;
 }) {
   const [organization, setOrganization] = useState<OrganizerGroups>({ hcomp: [], ci: [] });
   const [isLoadingOrganizers, setIsLoadingOrganizers] = useState(true);
@@ -2522,7 +2582,7 @@ function OrgSection({
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold">Organization</h2>
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            Meet the team behind HCOMP 2026.
+            Meet the team behind HCOMP {conferenceYear}.
           </p>
           {isLoadingRegistry || isLoadingOrganizers ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">
@@ -2550,9 +2610,11 @@ function OrgSection({
 function VenueSection({
   registryContent,
   isLoadingRegistry,
+  conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceYear: string;
 }) {
   const registryLocations = parseVenueLocations(
     getDatabaseRecords(getRegistryEntry(registryContent, 'attend page', 'venue')),
@@ -2580,7 +2642,7 @@ function VenueSection({
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold text-[#ffe7a6]">Venue</h2>
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            HCOMP 2026 will be held across multiple prestigious locations, chosen for their proximity and advanced facilities.
+            HCOMP {conferenceYear} will be held across multiple prestigious locations, chosen for their proximity and advanced facilities.
           </p>
           {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
