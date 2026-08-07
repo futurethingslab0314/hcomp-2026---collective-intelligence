@@ -23,7 +23,7 @@ import { CONFERENCE_CONTENT } from './constants/content';
 import { CONFERENCE_PHOTOS } from './constants/assets';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
-import { fetchOrganizers, fetchRegistryContent, type OrganizerGroups, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
+import { fetchOrganizers, fetchRegistryContent, type Organizer, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
 import {
   getDatabaseRecords,
   getRegistryEntryFromPages,
@@ -35,7 +35,6 @@ import {
   parseConferenceTopicBriefs,
   parseDeadlines,
   parseOrganizerPeople,
-  parseOrganizers,
   parsePastMeetings,
   parsePastReports,
   parseBestPaperAwardText,
@@ -124,10 +123,10 @@ export default function App() {
   const [activeSection, setActiveSection] = useState<SectionId>('home');
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAwardYear, setSelectedAwardYear] = useState<number | null>(null);
-  const [activePastMeetingTab, setActivePastMeetingTab] = useState<'hcomp' | 'ci'>('hcomp');
   const [registryContent, setRegistryContent] = useState<RegistryContent | null>(null);
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(registryContent);
+  const conferenceName = conferenceInfoContent.heroName.trim() || CONFERENCE_CONTENT.hero.title;
   const conferenceYear = conferenceInfoContent.year.trim() || CONFERENCE_CONTENT.hero.year;
   const shortConferenceYear = conferenceYear.slice(-2);
 
@@ -153,7 +152,6 @@ export default function App() {
         setActiveSection(data as SectionId);
       } else if (data && typeof data === 'object') {
         setActiveSection(data.id as SectionId);
-        if (data.tab) setActivePastMeetingTab(data.tab);
       }
       window.scrollTo(0, 0);
     };
@@ -206,8 +204,8 @@ export default function App() {
   }, [activeSection]);
 
   useEffect(() => {
-    document.title = `HCOMP ${conferenceYear}`;
-  }, [conferenceYear]);
+    document.title = `${conferenceName} ${conferenceYear}`;
+  }, [conferenceName, conferenceYear]);
 
   const sections = [
     { id: 'submission', label: 'Call for Participation', icon: FileText },
@@ -242,7 +240,7 @@ export default function App() {
             className="flex items-center gap-3 transition-transform hover:scale-105 group cursor-pointer"
           >
             <div className="text-left">
-              <div className="text-[18px] md:text-[22px] font-bold tracking-tighter leading-none text-white">HCOMP'{shortConferenceYear}</div>
+              <div className="text-[18px] md:text-[22px] font-bold tracking-tighter leading-none text-white">{conferenceName}'{shortConferenceYear}</div>
             </div>
           </button>
 
@@ -326,19 +324,18 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceYear={conferenceYear} />}
-            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
-            {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
+            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
-            {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
-            {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceYear={conferenceYear} />}
+            {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'sponsors' && <SponsorsSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'coc' && <CodeOfConductSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'past-meetings' && (
               <PastMeetingsSection 
                 onShowAwards={setSelectedAwardYear} 
-                activeTab={activePastMeetingTab}
-                setActiveTab={setActivePastMeetingTab}
                 registryContent={registryContent}
+                conferenceName={conferenceName}
                 conferenceYear={conferenceYear}
               />
             )}
@@ -349,10 +346,11 @@ export default function App() {
       <AwardDrawer 
         year={selectedAwardYear} 
         onClose={() => setSelectedAwardYear(null)}
+        conferenceName={conferenceName}
         dynamicMeetings={(() => {
           const entry = getRegistryEntry(registryContent, 'past meetings', 'past meetings');
           const records = getDatabaseRecords(entry);
-          return records.length > 0 ? parsePastMeetings(records).hcomp : undefined;
+          return records.length > 0 ? parsePastMeetings(records) : undefined;
         })()}
       />
     </div>
@@ -368,22 +366,17 @@ function roleIncludes(value: string, keywords: string[]) {
   return keywords.some((keyword) => normalized.includes(keyword));
 }
 
-function getConferenceBucket(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (normalized.includes('ci')) return 'ci';
-  if (normalized.includes('hcomp')) return 'hcomp';
-  return 'unknown';
-}
-
 function OrganizerMiniGrid({
   title,
   people,
   accentClass,
+  conferenceName,
   conferenceYear,
 }: {
   title: string;
-  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string; order?: number }>;
+  people: Organizer[];
   accentClass: string;
+  conferenceName: string;
   conferenceYear: string;
 }) {
   if (people.length === 0) {
@@ -399,67 +392,7 @@ function OrganizerMiniGrid({
       return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
     });
 
-  const grouped = {
-    hcomp: sortPeople(people.filter((person) => getConferenceBucket(person.conference ?? '') === 'hcomp')),
-    ci: sortPeople(people.filter((person) => getConferenceBucket(person.conference ?? '') === 'ci')),
-  };
-
-  const fallbackPeople = sortPeople(
-    people.filter((person) => getConferenceBucket(person.conference ?? '') === 'unknown'),
-  );
-
-  const renderPeople = (
-    items: typeof people,
-    trackLabel: string,
-    trackAccentClass: string,
-    emptyMessage: string,
-  ) => (
-    <div className="space-y-4">
-      <div className="flex items-center gap-3">
-        <div className={`text-[10px] uppercase tracking-[0.2em] font-bold ${trackAccentClass}`}>
-          {trackLabel}
-        </div>
-        <div className="h-px flex-1 bg-white/10" />
-      </div>
-      {items.length > 0 ? (
-        <div className="grid grid-cols-1 gap-4">
-          {items.map((person, index) => (
-            <div key={person.id ?? `${person.name}-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
-              {person.photo ? (
-                <img
-                  src={person.photo}
-                  alt={person.name}
-                  className="w-14 h-14 rounded-2xl object-cover border border-white/10"
-                />
-              ) : (
-                <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
-                  {person.name[0]}
-                </div>
-              )}
-              <div className="space-y-1">
-                <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
-                <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
-                <div className={`text-[10px] uppercase tracking-widest font-bold ${trackAccentClass}`}>{trackLabel}</div>
-                <div className="text-sm text-white/50">{person.org}</div>
-                {person.email ? (
-                  <a
-                    href={`mailto:${person.email}`}
-                    className="inline-flex text-xs text-brand-blue hover:underline break-all"
-                  >
-                    {person.email}
-                  </a>
-                ) : null}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="p-6 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
-          {emptyMessage}
-        </div>
-      )}
-    </div>
-  );
+  const sortedPeople = sortPeople(people);
 
   return (
     <div className="space-y-6">
@@ -467,37 +400,26 @@ function OrganizerMiniGrid({
         <h4 className={`text-xl font-bold ${accentClass}`}>{title}</h4>
         <div className="h-px flex-1 bg-white/10" />
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-        {renderPeople(grouped.hcomp, `HCOMP ${conferenceYear}`, 'text-brand-teal', `HCOMP ${conferenceYear} organizers will be listed here soon.`)}
-        {renderPeople(grouped.ci, `CI ${conferenceYear}`, 'text-brand-purple', `CI ${conferenceYear} organizers will be listed here soon.`)}
-      </div>
-      {fallbackPeople.length > 0 ? (
-        <div className="space-y-4">
-          <div className="text-[10px] uppercase tracking-[0.2em] font-bold text-white/40">Unassigned Conference</div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {fallbackPeople.map((person, index) => (
-              <div key={person.id ?? `${person.name}-fallback-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
-                {person.photo ? (
-                  <img
-                    src={person.photo}
-                    alt={person.name}
-                    className="w-14 h-14 rounded-2xl object-cover border border-white/10"
-                  />
-                ) : (
-                  <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
-                    {person.name[0]}
-                  </div>
-                )}
-                <div className="space-y-1">
-                  <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
-                  <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
-                  <div className="text-sm text-white/50">{person.org}</div>
-                </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {sortedPeople.map((person, index) => (
+          <div key={person.id ?? `${person.name}-${index}`} className="p-6 rounded-[2rem] glass border border-white/10 flex items-center gap-4">
+            {person.photo ? (
+              <img src={person.photo} alt={person.name} className="w-14 h-14 rounded-2xl object-cover border border-white/10" />
+            ) : (
+              <div className="w-14 h-14 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white font-bold text-lg">
+                {person.name[0]}
               </div>
-            ))}
+            )}
+            <div className="space-y-1">
+              <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{person.role}</div>
+              <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
+              <div className={`text-[10px] uppercase tracking-widest font-bold ${accentClass}`}>{conferenceName} {conferenceYear}</div>
+              <div className="text-sm text-white/50">{person.org}</div>
+              {person.email ? <a href={`mailto:${person.email}`} className="inline-flex text-xs text-brand-blue hover:underline break-all">{person.email}</a> : null}
+            </div>
           </div>
-        </div>
-      ) : null}
+        ))}
+      </div>
     </div>
   );
 }
@@ -524,9 +446,11 @@ function ComingSoonPanel({
 
 function SponsorContactsGrid({
   people,
+  conferenceName,
   conferenceYear,
 }: {
-  people: Array<{ id?: string; name: string; org: string; role: string; photo?: string; conference?: string; email?: string }>;
+  people: Organizer[];
+  conferenceName: string;
   conferenceYear: string;
 }) {
   if (people.length === 0) {
@@ -570,7 +494,7 @@ function SponsorContactsGrid({
                   <div className="text-[10px] uppercase tracking-widest text-white/40 font-bold">{group.role}</div>
                   <div className="text-lg font-bold leading-tight text-white">{person.name}</div>
                   <div className="text-[10px] uppercase tracking-widest text-brand-blue font-bold">
-                    {person.conference?.includes('CI') ? `CI ${conferenceYear}` : `HCOMP ${conferenceYear}`}
+                    {conferenceName} {conferenceYear}
                   </div>
                   <div className="text-sm text-white/50">{person.org}</div>
                   {person.email ? (
@@ -597,10 +521,10 @@ function OrganizerConferenceColumn({
   accentClass,
 }: {
   title: string;
-  people: OrganizerGroups['hcomp'];
+  people: Organizer[];
   accentClass: string;
 }) {
-  const grouped = people.reduce<Array<{ order: number; items: OrganizerGroups['hcomp'] }>>((acc, person) => {
+  const grouped = people.reduce<Array<{ order: number; items: Organizer[] }>>((acc, person) => {
     const order = person.order ?? 999;
     const existing = acc.find((group) => group.order === order);
     if (existing) {
@@ -667,7 +591,7 @@ function GeneralChairFeature({
   borderClass,
   bgClass,
 }: {
-  person?: OrganizerGroups['hcomp'][number];
+  person?: Organizer;
   fallbackName: string;
   fallbackOrg: string;
   accentClass: string;
@@ -701,16 +625,14 @@ function GeneralChairFeature({
 }
 
 function PastMeetingsSection({ 
-  onShowAwards, 
-  activeTab, 
-  setActiveTab,
+  onShowAwards,
   registryContent,
+  conferenceName,
   conferenceYear,
 }: { 
   onShowAwards: (year: number) => void,
-  activeTab: 'hcomp' | 'ci',
-  setActiveTab: (tab: 'hcomp' | 'ci') => void,
   registryContent: RegistryContent | null,
+  conferenceName: string,
   conferenceYear: string,
 }) {
   const entry = getRegistryEntry(registryContent, 'past meetings', 'past meetings');
@@ -720,11 +642,7 @@ function PastMeetingsSection({
   const reportsEntry = getRegistryEntry(registryContent, 'past meetings', 'past reports');
   const reportsRecords = getDatabaseRecords(reportsEntry);
   const dynamicReports = reportsRecords.length > 0 ? parsePastReports(reportsRecords) : null;
-  const hasPastMeetingsData = Boolean(
-    (dynamicMeetings?.hcomp.length ?? 0) > 0 ||
-    (dynamicMeetings?.ci.length ?? 0) > 0 ||
-    (dynamicReports?.length ?? 0) > 0,
-  );
+  const hasPastMeetingsData = Boolean((dynamicMeetings?.length ?? 0) > 0 || (dynamicReports?.length ?? 0) > 0);
 
   if (!hasPastMeetingsData) {
     return (
@@ -748,57 +666,19 @@ function PastMeetingsSection({
   return (
     <div className="space-y-24 pb-32">
       <div className="space-y-8">
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-          <div className="space-y-4">
-            <h2 className="text-4xl md:text-5xl font-display font-bold">Past Meetings</h2>
-            <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-              Explore the architectural history of HCOMP and Collective Intelligence.
-            </p>
-          </div>
-          
-          {/* Tab Switcher */}
-          <div className="flex bg-white/5 p-1 rounded-full border border-white/10 w-fit">
-          <button 
-            onClick={() => setActiveTab('hcomp')}
-            className={`px-6 py-2 rounded-full text-[10px] uppercase font-bold tracking-widest transition-all ${
-              activeTab === 'hcomp' 
-                ? 'bg-brand-teal text-white shadow-lg shadow-brand-teal/20' 
-                : 'text-white/40 hover:text-white/60'
-            }`}
-          >
-            HCOMP
-          </button>
-          <button 
-            onClick={() => setActiveTab('ci')}
-            className={`px-6 py-2 rounded-full text-[10px] uppercase font-bold tracking-widest transition-all ${
-              activeTab === 'ci' 
-                ? 'bg-brand-purple text-white shadow-lg shadow-brand-purple/20' 
-                : 'text-white/40 hover:text-white/60'
-            }`}
-          >
-            CI
-          </button>
+        <div className="space-y-4">
+          <h2 className="text-4xl md:text-5xl font-display font-bold">Past Meetings</h2>
+          <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
+            Explore the history of {conferenceName}.
+          </p>
         </div>
       </div>
-    </div>
-
-    <motion.div
-      key={activeTab}
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.3 }}
-      >
-        {activeTab === 'hcomp' ? (
-          <PastHCOMPSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings?.hcomp} dynamicReports={dynamicReports} conferenceYear={conferenceYear} />
-        ) : (
-          <PastCISection hideHeader dynamicMeetings={dynamicMeetings?.ci} conferenceYear={conferenceYear} />
-        )}
-      </motion.div>
+      <PastConferenceSection onShowAwards={onShowAwards} hideHeader dynamicMeetings={dynamicMeetings ?? undefined} dynamicReports={dynamicReports} conferenceName={conferenceName} conferenceYear={conferenceYear} />
     </div>
   );
 }
 
-function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, onClose: () => void, dynamicMeetings?: PastMeetingRecord[] }) {
+function AwardDrawer({ year, onClose, dynamicMeetings, conferenceName }: { year: number | null, onClose: () => void, dynamicMeetings?: PastMeetingRecord[], conferenceName: string }) {
   const dynamicMeeting = dynamicMeetings?.find(m => m.year === year);
 
   // Parse dynamic award text into structured categories
@@ -838,7 +718,7 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
             <div className="flex justify-between items-start mb-12">
               <div className="space-y-1">
                 <div className="text-brand-teal text-xs font-bold uppercase tracking-widest">Awards Archive</div>
-                <h2 className="text-4xl md:text-5xl font-display font-bold">HCOMP {year}</h2>
+                <h2 className="text-4xl md:text-5xl font-display font-bold">{conferenceName} {year}</h2>
               </div>
               <button 
                 onClick={onClose}
@@ -902,121 +782,19 @@ function AwardDrawer({ year, onClose, dynamicMeetings }: { year: number | null, 
   );
 }
 
-function PastCISection({
-  hideHeader = false,
-  dynamicMeetings,
-  conferenceYear,
-}: {
-  hideHeader?: boolean;
-  dynamicMeetings?: PastMeetingRecord[];
-  conferenceYear: string;
-}) {
-  const ciMeetings = dynamicMeetings && dynamicMeetings.length > 0
-    ? dynamicMeetings.map(m => ({
-        year: m.year,
-        location: m.location,
-        website: m.website,
-        proceedings: m.proceedings,
-        bestPaperAward: m.bestPaperAward,
-      }))
-    : [];
-
-  return (
-    <div className="space-y-16 pb-32">
-      {!hideHeader && (
-        <div className="space-y-6">
-          <button 
-            onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: 'home' }))}
-            className="flex items-center gap-2 text-brand-purple font-bold text-sm hover:translate-x-1 transition-transform cursor-pointer"
-          >
-            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'{conferenceYear.slice(-2)}
-          </button>
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
-            <div className="space-y-4">
-              <h2 className="text-4xl md:text-5xl font-display font-bold text-brand-purple font-outline text-transparent">Past Conferences</h2>
-              <h3 className="text-3xl md:text-4xl font-display font-bold">Collective Intelligence</h3>
-              <p className="text-white/60 max-w-2xl text-lg md:text-xl font-light leading-relaxed">
-                A history of interdisciplinary research bridging computer science, economics, biology, and social sciences.
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-px bg-white/10 rounded-[2rem] border border-white/10 overflow-hidden">
-        {ciMeetings.map((meeting, i) => (
-          <motion.div
-            key={meeting.year}
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            className="group relative bg-white/5 p-8 hover:bg-black/60 transition-colors"
-          >
-            <div className="space-y-6">
-              <div className="flex justify-between items-start">
-                <div className="text-brand-purple font-display font-bold text-5xl opacity-40 group-hover:opacity-100 transition-all">
-                  {meeting.year}
-                </div>
-                <div className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">CI</div>
-              </div>
-
-              <div className="space-y-2">
-                <div className="flex items-center gap-2 text-white font-bold text-sm">
-                  <MapPin size={12} className="text-brand-purple" />
-                  {meeting.location}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 gap-2 pt-4">
-                {meeting.website ? (
-                  <a 
-                    href={meeting.website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
-                  >
-                    Website
-                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                  </a>
-                ) : null}
-                {meeting.proceedings ? (
-                  <a 
-                    href={meeting.proceedings}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn"
-                  >
-                    Proceedings
-                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                  </a>
-                ) : null}
-                {meeting.bestPaperAward ? (
-                  <button 
-                    className="flex items-center justify-between px-4 py-3 bg-white/5 rounded-xl text-[10px] uppercase tracking-widest font-bold hover:bg-white/10 hover:text-brand-purple transition-all group/btn opacity-50 cursor-not-allowed"
-                  >
-                    Best Paper Award
-                    <ChevronRight size={12} className="group-hover/btn:translate-x-1 transition-transform" />
-                  </button>
-                ) : null}
-              </div>
-            </div>
-          </motion.div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function PastHCOMPSection({
+function PastConferenceSection({
   onShowAwards,
   hideHeader = false,
   dynamicMeetings,
   dynamicReports,
+  conferenceName,
   conferenceYear,
 }: {
   onShowAwards: (year: number) => void;
   hideHeader?: boolean;
   dynamicMeetings?: PastMeetingRecord[];
   dynamicReports?: PastReportRecord[] | null;
+  conferenceName: string;
   conferenceYear: string;
 }) {
   const hcompMeetings = dynamicMeetings && dynamicMeetings.length > 0
@@ -1042,13 +820,13 @@ function PastHCOMPSection({
             onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: 'home' }))}
             className="flex items-center gap-2 text-brand-teal font-bold text-sm hover:translate-x-1 transition-transform cursor-pointer"
           >
-            <ChevronRight className="rotate-180" size={16} /> Back to HCOMP'{conferenceYear.slice(-2)}
+            <ChevronRight className="rotate-180" size={16} /> Back to {conferenceName}'{conferenceYear.slice(-2)}
           </button>
           <div className="flex flex-col md:flex-row md:items-end justify-between gap-8">
             <div className="space-y-4">
               <h2 className="text-4xl md:text-5xl font-display font-bold">Past Meetings</h2>
               <p className="text-white/60 max-w-2xl text-lg md:text-xl font-light leading-relaxed">
-                Tracking the evolution of HCOMP since its inception in 2009. From workshop beginnings to the premier ACM conference.
+                Tracking the evolution of {conferenceName} through its archived meetings and reports.
               </p>
             </div>
           </div>
@@ -1068,7 +846,7 @@ function PastHCOMPSection({
                 <div className="text-brand-teal font-display font-bold text-5xl opacity-40 group-hover:opacity-100 transition-all">
                   {meeting.year}
                 </div>
-                <div className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">HCOMP</div>
+                <div className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em]">{conferenceName}</div>
               </div>
 
               <div className="space-y-2">
@@ -1156,16 +934,17 @@ function PastHCOMPSection({
 
 function AboutLandingSection({
   registryContent: _registryContent,
+  conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
+  conferenceName: string;
   conferenceYear: string;
 }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(_registryContent);
-  const [homeOrganizers, setHomeOrganizers] = useState<OrganizerGroups>({ hcomp: [], ci: [] });
-  const [hoveredTrack, setHoveredTrack] = React.useState<number | null>(null);
+  const [homeOrganizers, setHomeOrganizers] = useState<Organizer[]>([]);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
   const aboutParagraphs = (conferenceInfoContent.about || about.landing.content)
@@ -1176,8 +955,8 @@ function AboutLandingSection({
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
   const heroTitle = conferenceInfoContent.heroName || hero.title;
   const heroSubtitle = conferenceInfoContent.heroLongName || withConferenceYear(hero.subtitle, conferenceYear);
-  const hcompGeneralChair = homeOrganizers.hcomp.find((person) => person.role.toLowerCase().includes('general chair'));
-  const ciGeneralChair = homeOrganizers.ci.find((person) => person.role.toLowerCase().includes('general chair'));
+  const generalChair = homeOrganizers.find((person) => person.role.toLowerCase().includes('general chair'));
+  const fallbackGeneralChair = about.chairs.find((chair) => chair.event.includes('HCOMP')) ?? about.chairs[0];
 
   // Loop for the hero animation
   useEffect(() => {
@@ -1323,37 +1102,27 @@ function AboutLandingSection({
         </div>
       </div>
 
-      {/* Page 4: Dual Conference Comparison - Continuous Scroll Here */}
+      {/* Page 4: Current Conference */}
       <div className="snap-start flex-none min-h-screen py-24 md:py-32 px-6 flex flex-col gap-12 md:gap-16">
         <div className="space-y-6 text-center max-w-4xl mx-auto">
-          <h2 className="text-4xl md:text-5xl font-display font-bold">Joint Track Experience</h2>
+          <h2 className="text-4xl md:text-5xl font-display font-bold">{conferenceName} {conferenceYear}</h2>
           <p className="text-white/60 text-lg md:text-xl font-light leading-relaxed">
-            This year, the conference will be co-located and tightly integrated with the {conferenceYear} ACM Collective Intelligence (CI) Conference, creating a unique synergy between researchers in human-AI collaboration and collective intelligence.
+            {conferenceInfoText}
           </p>
         </div>
         
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-px bg-white/10 rounded-[2rem] md:rounded-[3rem] overflow-hidden glass border border-white/10 max-w-7xl mx-auto auto-rows-min">
-          {/* TRACK 1 COLUMN CONTENT (HCOMP) */}
-          {/* Header T1 */}
-          <div 
-            className={`p-8 md:p-16 pb-6 space-y-6 md:border-r border-white/10 transition-colors duration-500 md:col-start-1 md:row-start-1 ${hoveredTrack === 1 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(1)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <div className="text-brand-teal text-xs font-bold uppercase tracking-[0.3em] mb-2">Track 01</div>
-            <h3 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">{about.hcomp.title}</h3>
+        <div className="grid grid-cols-1 gap-px bg-white/10 rounded-[2rem] md:rounded-[3rem] overflow-hidden glass border border-white/10 max-w-5xl w-full mx-auto auto-rows-min">
+          <div className="p-8 md:p-16 pb-6 space-y-6 bg-white/5">
+            <div className="text-brand-teal text-xs font-bold uppercase tracking-[0.3em] mb-2">Current Conference</div>
+            <h3 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">{conferenceName}</h3>
           </div>
           
           {/* Chair Row T1 */}
-          <div 
-            className={`px-8 md:px-16 py-12 md:py-16 md:border-r border-white/10 transition-colors duration-500 md:col-start-1 md:row-start-2 ${hoveredTrack === 1 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(1)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
+          <div className="px-8 md:px-16 py-12 md:py-16 border-t border-white/10 bg-white/5">
             <GeneralChairFeature
-              person={hcompGeneralChair}
-              fallbackName={about.chairs[1].name}
-              fallbackOrg={about.chairs[1].org}
+              person={generalChair}
+              fallbackName={fallbackGeneralChair?.name ?? 'To be announced'}
+              fallbackOrg={fallbackGeneralChair?.org ?? ''}
               accentClass="text-brand-teal"
               borderClass="border-brand-teal/20"
               bgClass="bg-brand-teal/10"
@@ -1361,28 +1130,20 @@ function AboutLandingSection({
           </div>
 
           {/* Description Row T1 */}
-          <div 
-            className={`p-8 md:p-16 md:border-r border-white/10 transition-colors duration-500 flex flex-col gap-6 md:col-start-1 md:row-start-3 ${hoveredTrack === 1 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(1)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
+          <div className="p-8 md:p-16 border-t border-white/10 bg-white/5 flex flex-col gap-6">
             <p className="text-base md:text-lg font-bold text-white/90 leading-snug">{about.hcomp.description}</p>
             <p className="text-sm text-white/50 leading-relaxed font-light">{about.hcomp.details}</p>
           </div>
 
           {/* Topics Row T1 */}
-          <div 
-            className={`p-8 md:p-16 md:border-r border-white/10 space-y-8 transition-colors duration-500 md:col-start-1 md:row-start-4 ${hoveredTrack === 1 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(1)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
+          <div className="p-8 md:p-16 border-t border-white/10 space-y-8 bg-white/5">
             <div className="text-xl font-bold flex items-center gap-3">
               <div className="w-8 h-[1px] bg-brand-teal" />
               Topics of Interest
             </div>
-            {topicSections.hcomp.length > 0 ? (
+            {topicSections.length > 0 ? (
               <div className="space-y-8">
-                {topicSections.hcomp.map((topic, j) => (
+                {topicSections.map((topic, j) => (
                   <div key={j} className="space-y-4">
                     <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
                       {topic.category}
@@ -1400,115 +1161,23 @@ function AboutLandingSection({
               </div>
             ) : (
               <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
-                Topics of Interest for HCOMP {conferenceYear} are coming soon.
+                Topics of Interest for {conferenceName} {conferenceYear} are coming soon.
               </div>
             )}
           </div>
 
           {/* Footer Row T1 */}
-          <div 
-            className={`p-8 md:p-16 md:border-r border-white/10 transition-colors duration-500 md:col-start-1 md:row-start-5 ${hoveredTrack === 1 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(1)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
+          <div className="p-8 md:p-16 border-t border-white/10 bg-white/5">
             <button 
               onClick={() => {
-                window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings', tab: 'hcomp' } }));
+                window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings' } }));
               }}
               className="inline-flex items-center gap-2 px-6 py-2 rounded-full border-[#ffe7a6]/30 text-[#ffe7a6] text-xs font-bold hover:bg-[#ffe7a6] hover:text-black transition-all group cursor-pointer"
             >
-              View Past HCOMP
+              View Past {conferenceName}
               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
             </button>
           </div>
-
-          {/* TRACK 2 COLUMN CONTENT (CI) */}
-          {/* Header Row T2 */}
-          <div 
-            className={`p-8 md:p-16 pb-6 space-y-6 transition-colors duration-500 md:col-start-2 md:row-start-1 ${hoveredTrack === 2 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(2)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <div className="text-brand-purple text-xs font-bold uppercase tracking-[0.3em] mb-2">Track 02</div>
-            <h3 className="text-3xl md:text-5xl font-display font-bold text-white leading-tight">{about.ci.title}</h3>
-          </div>
-
-          {/* Chair Row T2 */}
-          <div 
-            className={`px-8 md:px-16 py-12 md:py-16 transition-colors duration-500 md:col-start-2 md:row-start-2 ${hoveredTrack === 2 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(2)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <GeneralChairFeature
-              person={ciGeneralChair}
-              fallbackName={about.chairs[0].name}
-              fallbackOrg={about.chairs[0].org}
-              accentClass="text-brand-purple"
-              borderClass="border-brand-purple/20"
-              bgClass="bg-brand-purple/10"
-            />
-          </div>
-
-          {/* Description Row T2 */}
-          <div 
-            className={`p-8 md:p-16 transition-colors duration-500 flex flex-col gap-6 md:col-start-2 md:row-start-3 ${hoveredTrack === 2 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(2)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <p className="text-base md:text-lg font-bold text-white/90 leading-snug">{about.ci.description}</p>
-            <p className="text-sm text-white/50 leading-relaxed font-light">{about.ci.details}</p>
-          </div>
-
-          {/* Topics Row T2 */}
-          <div 
-            className={`p-8 md:p-16 space-y-8 transition-colors duration-500 md:col-start-2 md:row-start-4 ${hoveredTrack === 2 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(2)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <div className="text-xl font-bold flex items-center gap-3">
-              <div className="w-8 h-[1px] bg-brand-purple" />
-              Topics of Interest
-            </div>
-            {topicSections.ci.length > 0 ? (
-              <div className="space-y-8">
-                {topicSections.ci.map((topic, j) => (
-                  <div key={j} className="space-y-4">
-                    <div className="text-[10px] uppercase tracking-[0.15em] font-bold text-brand-teal bg-white/5 px-3 py-1 rounded-full w-fit">
-                      {topic.category}
-                    </div>
-                    <ul className="grid grid-cols-1 gap-2">
-                      {topic.items.map((item, k) => (
-                        <li key={k} className="text-base text-white flex items-start gap-3 group">
-                          <span className="text-brand-purple mt-1 flex-shrink-0 opacity-50 group-hover:opacity-100 transition-opacity">•</span>
-                          <span className="leading-relaxed">{item}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <div className="p-8 rounded-[2rem] border border-dashed border-white/10 bg-white/[0.02] text-sm text-white/35 italic font-serif">
-                Topics of Interest for CI {conferenceYear} are coming soon.
-              </div>
-            )}
-          </div>
-
-          {/* Footer Row T2 */}
-          <div 
-            className={`p-8 md:p-16 transition-colors duration-500 md:col-start-2 md:row-start-5 ${hoveredTrack === 2 ? 'bg-black/60' : 'bg-white/5'}`}
-            onMouseEnter={() => setHoveredTrack(2)}
-            onMouseLeave={() => setHoveredTrack(null)}
-          >
-            <button 
-              onClick={() => window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings', tab: 'ci' } }))}
-              className="inline-flex items-center gap-2 px-6 py-2 rounded-full border border-brand-purple/30 text-brand-purple text-xs font-bold hover:bg-brand-purple hover:text-white transition-all group cursor-pointer"
-            >
-              View Past CI
-              <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
-          </div>
-
 
         </div>
         
@@ -1522,10 +1191,12 @@ function AboutLandingSection({
 function SponsorsSection({
   registryContent,
   isLoadingRegistry,
+  conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceName: string;
   conferenceYear: string;
 }) {
   const callForSponsorBlocks = getPageBlocks(getRegistryEntry(registryContent, 'sponsor page', 'call for sponsor'));
@@ -1664,10 +1335,10 @@ function SponsorsSection({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 mt-12">
           <div className="space-y-6">
             <p className="text-white/70 leading-relaxed">
-              Partnering with HCOMP {conferenceYear} as a sponsor offers your organization a unique opportunity to be at the forefront of innovation in human computation and crowdsourcing – a fundamentally important field in creating and propagating better AI.
+              Partnering with {conferenceName} {conferenceYear} as a sponsor offers your organization a unique opportunity to support the conference community and its research.
             </p>
             <p className="text-white/70 leading-relaxed">
-              HCOMP is a cross-disciplinary conference fostering an inclusive atmosphere that encourages active participation from both industry and academia to share their expertise, collaborate, and advance the field's frontiers.
+              {conferenceName} is a cross-disciplinary conference fostering an inclusive atmosphere that encourages active participation from both industry and academia to share expertise and collaborate.
             </p>
           </div>
           <div className="glass p-8 rounded-3xl space-y-4">
@@ -1788,12 +1459,12 @@ function SponsorsSection({
         <div className="space-y-4">
           <h3 className="text-3xl font-display font-bold">Let's Talk!</h3>
           <p className="text-white/60 max-w-2xl text-lg font-light italic font-serif">
-            We invite potential sponsors to get in touch with the General Chairs of this joint conference to discuss partnership details.
+            We invite potential sponsors to get in touch with the General Chairs to discuss partnership details.
           </p>
         </div>
 
         {sponsorContacts.length > 0 ? (
-          <SponsorContactsGrid people={sponsorContacts} conferenceYear={conferenceYear} />
+          <SponsorContactsGrid people={sponsorContacts} conferenceName={conferenceName} conferenceYear={conferenceYear} />
         ) : null}
       </div>
     </div>
@@ -1837,19 +1508,19 @@ function CodeOfConductSection({
 function SubmissionSection({
   registryContent,
   isLoadingRegistry,
+  conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceName: string;
   conferenceYear: string;
 }) {
-  const { cfpDetails, about, deadlines } = CONFERENCE_CONTENT;
+  const { cfpDetails, deadlines } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(registryContent);
   const topicBriefs = getConferenceTopicBriefsFromRegistry(registryContent);
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
-  const [activeTopicTrack, setActiveTopicTrack] = useState<'ci' | 'hcomp'>('hcomp');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const activeTopicSections = topicSections[activeTopicTrack];
   const generalInstructionBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'general instructions'));
   const papersAndTalksBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'papers and talks'));
   const postersAndDemosBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'poster and demos'));
@@ -1882,27 +1553,13 @@ function SubmissionSection({
   ];
 
   const currentTabLabel = tabs.find(t => t.id === activeTab)?.label;
-  const activeTopicBrief = activeTopicTrack === 'hcomp' ? topicBriefs.hcomp : topicBriefs.ci;
-  const fallbackTopicBrief = activeTopicTrack === 'hcomp'
-    ? [
-        'ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment. Our community studies and designs systems that combine the complementary strengths of human and artificial intelligence to achieve outcomes neither could achieve alone, in ways that are ethical, safe, and intentional. This research builds on a foundation established by the HCOMP community during its first decade as an AAAI conference series focused on human computation and crowdsourcing.',
-        'HCOMP focuses on the emerging science and practice of human-AI complementarity and alignment. As AI systems become increasingly capable, the field is expanding from studying how humans contribute to building these systems to also studying how humans and AI systems work together as complementary partners. This broader perspective situates complementarity and alignment across the full lifecycle of AI systems, from how systems are built and evaluated to how they are used and governed in practice, with attention to how responsibilities are divided, how collaboration evolves over time, and how alignment is achieved and maintained in real-world use.',
-        'While artificial intelligence (AI) and human-computer interaction (HCI) represent traditional mainstays of the conference, HCOMP believes strongly in fostering and promoting broad, interdisciplinary research. Our field is particularly unique in the diversity of disciplines it draws upon and contributes to, including human-centered qualitative studies, HCI design, social computing, machine learning, natural language processing, the broader realms of artificial intelligence (including LLMs and generative AI), economics, computational social science, digital humanities, policy, and ethics. We promote the exchange of advances in human-AI complementarity and alignment not only among researchers but also engineers and practitioners, to encourage dialogue across disciplines and communities of practice.',
-      ]
-    : [
-        'ACM Collective Intelligence is the premier venue for disseminating the latest research that advances the theoretical and empirical understanding of collective performance in diverse systems, whether biological, technological, or a combination. We are interested in research on a broad range of systems that vary in scale and scope and focus on implications for a diverse range of social, ecological, and economic outcomes.',
-        'CI has a transdisciplinary focus devoted to advancing the theoretical and empirical understanding of collective intelligence, broadly designed. The community does basic science on emergent collective phenomena, as well as designing and engineering systems for combining computational and human intelligence. We are interested in research on a broad range of phenomena that vary in scale and scope with implications for a diverse range of social, ecological, and economic outcomes.',
-        'Researchers who participate in the CI conference represent a wide and growing cross-section of social science and computer science as well the natural sciences, arts, and humanities. All types of contributions—empirical, conceptual, theoretical, quantitative, and qualitative—are welcome, including computational models.',
-      ];
-  const topicBriefParagraphs = activeTopicBrief
-    ? activeTopicBrief
+  const topicBriefParagraphs = topicBriefs
+    ? topicBriefs
         .split(/\n{2,}/)
         .map((paragraph) => paragraph.trim())
         .filter(Boolean)
-    : fallbackTopicBrief;
-  const topicExampleLead = activeTopicTrack === 'hcomp'
-    ? 'Example topics for HCOMP include, but are not limited to, the following:'
-    : 'Topics include (but are not limited to) research that helps us to explain the mechanisms of emergent behavior as well as presentations of design solutions and systems engineering:';
+    : [`${conferenceName} topics will be published here once they are available.`];
+  const topicExampleLead = `Example topics for ${conferenceName} include, but are not limited to, the following:`;
 
   return (
     <div className="space-y-24 pb-32">
@@ -1911,7 +1568,7 @@ function SubmissionSection({
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold">Submission</h2>
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—are intended to accommodate the different norms and requirements across the diverse fields represented in the Collective Intelligence and HCOMP communities.
+            The primary submission formats are designed to accommodate the diverse fields represented in the {conferenceName} community.
           </p>
           {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
@@ -2011,46 +1668,32 @@ function SubmissionSection({
 
               {/* Topic of Interests */}
               <div className="space-y-8">
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                <div className="flex items-center justify-between gap-6">
                   <h4 className="text-xl font-bold">Topic of Interests</h4>
-                  <div className="flex bg-white/5 p-1 rounded-full border border-white/10 w-fit shrink-0">
-                    {['hcomp', 'ci'].map(track => (
-                      <button 
-                        key={track}
-                        onClick={() => setActiveTopicTrack(track as 'ci' | 'hcomp')}
-                        className={`px-6 py-2 rounded-full text-[10px] uppercase font-bold tracking-widest transition-all ${
-                          activeTopicTrack === track 
-                            ? track === 'ci' ? 'bg-brand-purple text-white shadow-lg shadow-brand-purple/20' : 'bg-brand-teal text-white shadow-lg shadow-brand-teal/20'
-                            : 'text-white/40 hover:text-white/60'
-                        }`}
-                      >
-                        {track.toUpperCase()}
-                      </button>
-                    ))}
-                  </div>
+                  <div className="px-4 py-2 rounded-full bg-brand-teal/10 text-brand-teal text-[10px] uppercase font-bold tracking-widest">{conferenceName}</div>
                 </div>
 
                 {/* Track Description Section */}
                 <div className="max-w-4xl space-y-6">
                   <div className="space-y-6 text-sm md:text-base text-white/70 font-light leading-relaxed">
                     {topicBriefParagraphs.map((paragraph, index) => (
-                      <p key={`${activeTopicTrack}-brief-${index}`}>{paragraph}</p>
+                      <p key={`${conferenceName}-brief-${index}`}>{paragraph}</p>
                     ))}
                     <p className="font-bold text-white">{topicExampleLead}</p>
                   </div>
                 </div>
 
-                {activeTopicSections.length > 0 ? (
+                {topicSections.length > 0 ? (
                   <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {activeTopicSections.map((group, i: number) => (
+                    {topicSections.map((group, i: number) => (
                       <div key={i} className="p-8 glass rounded-[2rem] border-white/5 space-y-6">
-                        <div className={`text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full w-fit ${activeTopicTrack === 'ci' ? 'bg-brand-purple/10 text-brand-purple' : 'bg-brand-teal/10 text-brand-teal'}`}>
+                        <div className="text-[10px] font-bold uppercase tracking-widest px-3 py-1 rounded-full w-fit bg-brand-teal/10 text-brand-teal">
                           {group.category}
                         </div>
                         <ul className="space-y-3">
                           {group.items.map((item: string, j: number) => (
                             <li key={j} className="flex items-start gap-3 text-sm text-white/60 group">
-                              <span className={`mt-1.5 w-1 h-1 rounded-full shrink-0 ${activeTopicTrack === 'ci' ? 'bg-brand-purple' : 'bg-brand-teal'}`} />
+                              <span className="mt-1.5 w-1 h-1 rounded-full shrink-0 bg-brand-teal" />
                               <span className="group-hover:text-white transition-colors">{item}</span>
                             </li>
                           ))}
@@ -2061,7 +1704,7 @@ function SubmissionSection({
                 ) : (
                   <ComingSoonPanel
                     title="Coming soon!"
-                    message={`Topics of Interest for ${activeTopicTrack.toUpperCase()} ${conferenceYear} will appear here once they are published.`}
+                    message={`Topics of Interest for ${conferenceName} ${conferenceYear} will appear here once they are published.`}
                   />
                 )}
               </div>
@@ -2101,7 +1744,7 @@ function SubmissionSection({
                     <div className="space-y-8">
                       <h4 className="text-xl font-bold">Policy on Using Large Language Models (LLMs) when Authoring Submissions</h4>
                       <div className="space-y-6 max-w-4xl text-sm text-white/60 leading-relaxed font-light">
-                        <p>In line with other SIGCHI conferences’ (e.g., CHI), and computing conferences’ (e.g., CVPR and KDD), CI and HCOMP {conferenceYear} employ the following policy on the use of Large Language Models in authoring submissions.</p>
+                        <p>In line with other SIGCHI and computing conferences, {conferenceName} {conferenceYear} employs the following policy on the use of Large Language Models in authoring submissions.</p>
                         <p>Text generated from a large-scale language model (LLM), such as ChatGPT, must be clearly marked where such tools are used for purposes beyond editing the author’s own text. Please carefully review the ACM Policy on Authorship before you use these tools.</p>
                         <p>Note that the LaTeX template will default to hiding the Acknowledgements section while in review mode; please make sure that any LLM disclosure is available in your submitted version.</p>
                       </div>
@@ -2160,7 +1803,7 @@ function SubmissionSection({
                   <div className="max-w-5xl">
                     <NotionContentRenderer blocks={papersAndTalksBlocks} />
                   </div>
-                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
                 </div>
               ) : (
                 <>
@@ -2261,7 +1904,7 @@ function SubmissionSection({
                       </div>
                     </div>
                   </div>
-                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                  <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
                 </>
               )}
             </section>
@@ -2277,7 +1920,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={postersAndDemosBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2290,7 +1933,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Posters and Demos call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Posters and Demos Organizers" people={posterOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2305,7 +1948,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={doctoralConsortiumBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2318,7 +1961,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Doctoral Consortium will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Doctoral Consortium Organizers" people={dcOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2333,7 +1976,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={workshopsBlocks} />
                 </div>
-                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2346,7 +1989,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the Workshops call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="Workshop Organizers" people={workshopOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2361,7 +2004,7 @@ function SubmissionSection({
                 <div className="max-w-5xl">
                   <NotionContentRenderer blocks={crowdcampBlocks} />
                 </div>
-                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </section>
             ) : (
               <>
@@ -2374,7 +2017,7 @@ function SubmissionSection({
                     <p className="text-white/30 font-serif italic text-base max-w-sm">Full details for the CrowdCamp call will be posted shortly.</p>
                   </div>
                 </div>
-                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceYear={conferenceYear} />
+                <OrganizerMiniGrid title="CrowdCamp Organizers" people={crowdcampOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
               </>
             )
           )}
@@ -2543,12 +2186,14 @@ function ProgramSection({
 
 function OrgSection({
   isLoadingRegistry,
+  conferenceName,
   conferenceYear,
 }: {
   isLoadingRegistry: boolean;
+  conferenceName: string;
   conferenceYear: string;
 }) {
-  const [organization, setOrganization] = useState<OrganizerGroups>({ hcomp: [], ci: [] });
+  const [organization, setOrganization] = useState<Organizer[]>([]);
   const [isLoadingOrganizers, setIsLoadingOrganizers] = useState(true);
 
   useEffect(() => {
@@ -2557,7 +2202,7 @@ function OrgSection({
     const loadOrganizers = async () => {
       try {
         const organizers = await fetchOrganizers();
-        if (isMounted && (organizers.hcomp.length > 0 || organizers.ci.length > 0)) {
+        if (isMounted && organizers.length > 0) {
           setOrganization(organizers);
         }
       } catch (error) {
@@ -2582,7 +2227,7 @@ function OrgSection({
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold">Organization</h2>
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            Meet the team behind HCOMP {conferenceYear}.
+            Meet the team behind {conferenceName} {conferenceYear}.
           </p>
           {isLoadingRegistry || isLoadingOrganizers ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">
@@ -2592,11 +2237,8 @@ function OrgSection({
         </div>
       </div>
 
-      {organization.hcomp.length > 0 || organization.ci.length > 0 ? (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-          <OrganizerConferenceColumn title="HCOMP Team" people={organization.hcomp} accentClass="text-brand-teal" />
-          <OrganizerConferenceColumn title="Collective Intelligence Team" people={organization.ci} accentClass="text-brand-purple" />
-        </div>
+      {organization.length > 0 ? (
+        <OrganizerConferenceColumn title={`${conferenceName} Team`} people={organization} accentClass="text-brand-teal" />
       ) : (
         <ComingSoonPanel
           title="Coming soon!"
@@ -2610,10 +2252,12 @@ function OrgSection({
 function VenueSection({
   registryContent,
   isLoadingRegistry,
+  conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
   isLoadingRegistry: boolean;
+  conferenceName: string;
   conferenceYear: string;
 }) {
   const registryLocations = parseVenueLocations(
@@ -2642,7 +2286,7 @@ function VenueSection({
         <div className="space-y-4">
           <h2 className="text-4xl md:text-5xl font-display font-bold text-[#ffe7a6]">Venue</h2>
           <p className="text-white/60 max-w-4xl text-lg md:text-xl font-light leading-relaxed">
-            HCOMP {conferenceYear} will be held across multiple prestigious locations, chosen for their proximity and advanced facilities.
+            {conferenceName} {conferenceYear} will be held across the locations listed below.
           </p>
           {isLoadingRegistry ? (
             <p className="text-sm uppercase tracking-[0.18em] text-white/30 font-bold">Syncing with Notion...</p>
