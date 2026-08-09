@@ -32,7 +32,8 @@ Set these environment variables in Vercel Project Settings:
 Expected Notion database properties:
 
 - `program database`: `Date`, `start_time`, `end_time`, `Topic`, `location`, `keywords`
-- `organizer database`: `Name`, `organization`, `Role`, `photos`, `conference`
+- `organizer database`: `Name`, `organization`, `Role`, `photos`, `order`, `email`
+- `conference info database` main record: `name`, `long name`, `year`, `about`, `conference info`
 
 API routes used by the frontend:
 
@@ -42,6 +43,7 @@ API routes used by the frontend:
 Notes:
 
 - `keywords` can be either `select` or `multi_select`. Values like `keynote`, `networking`, and `social` are used to style session types.
-- `conference` should contain either `HCOMP` or `CI` so the organizers can be grouped onto the correct side.
+- The site represents one conference. Organizer and topic records do not need a `conference` property.
+- The main conference-info record's `name` is the short name shown across the site (for example, changing it to `TAICHI` updates current-conference labels).
 - `photos` should be a Notion `files` field if you want organizer headshots to appear.
 - In local `vite` development, if `/api/*` is not available, the UI automatically falls back to the existing static content.

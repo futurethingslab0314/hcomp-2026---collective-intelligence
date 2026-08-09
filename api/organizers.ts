@@ -7,17 +7,9 @@ type OrganizerItem = {
   organization: string;
   role: string;
   photo: string;
-  conference: string;
   order: number;
   email: string;
 };
-
-function normalizeConference(value: string) {
-  const normalized = value.toLowerCase();
-  if (normalized.includes('hcomp')) return 'hcomp';
-  if (normalized.includes('ci')) return 'ci';
-  return 'other';
-}
 
 export default async function handler(_req: any, res: any) {
   try {
@@ -36,7 +28,6 @@ export default async function handler(_req: any, res: any) {
           organization: getPlainText(properties, 'organization'),
           role: getPlainText(properties, 'Role'),
           photo: getFileUrl(properties, 'photos'),
-          conference: getPlainText(properties, 'conference'),
           order: Number(getPlainText(properties, 'order')) || 999,
           email:
             getPlainText(properties, 'email') ||
@@ -49,24 +40,14 @@ export default async function handler(_req: any, res: any) {
       .filter(Boolean) as OrganizerItem[];
 
     const sorted = [...people].sort((a, b) => {
-      const conferenceCompare = normalizeConference(a.conference).localeCompare(normalizeConference(b.conference));
-      if (conferenceCompare !== 0) return conferenceCompare;
       const orderCompare = a.order - b.order;
       if (orderCompare !== 0) return orderCompare;
+      const roleCompare = a.role.localeCompare(b.role, undefined, { sensitivity: 'base' });
+      if (roleCompare !== 0) return roleCompare;
       return a.name.localeCompare(b.name);
     });
 
-    const payload = sorted.reduce<{ hcomp: OrganizerItem[]; ci: OrganizerItem[] }>(
-      (acc, person) => {
-        const conference = normalizeConference(person.conference);
-        if (conference === 'hcomp') acc.hcomp.push(person);
-        if (conference === 'ci') acc.ci.push(person);
-        return acc;
-      },
-      { hcomp: [], ci: [] },
-    );
-
-    json(res, 200, payload);
+    json(res, 200, { organizers: sorted });
   } catch (error) {
     console.error('Failed to load organizers', error);
     const message = error instanceof Error ? error.message : 'Unknown error';

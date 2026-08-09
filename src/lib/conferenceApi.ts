@@ -20,14 +20,8 @@ export type Organizer = {
   org: string;
   role: string;
   photo?: string;
-  conference?: string;
   order?: number;
   email?: string;
-};
-
-export type OrganizerGroups = {
-  hcomp: Organizer[];
-  ci: Organizer[];
 };
 
 export type RichTextSpan = {
@@ -113,7 +107,7 @@ function normalizeProgramDays(days: any[]): ProgramDay[] {
   }));
 }
 
-function normalizeOrganizers(payload: any): OrganizerGroups {
+export function normalizeOrganizers(payload: any): Organizer[] {
   const normalizeList = (items: any[]) =>
     items.map((item) => ({
       id: item.id ? String(item.id) : undefined,
@@ -121,15 +115,17 @@ function normalizeOrganizers(payload: any): OrganizerGroups {
       org: String(item.organization ?? item.org ?? ''),
       role: String(item.role ?? ''),
       photo: item.photo ? String(item.photo) : undefined,
-      conference: item.conference ? String(item.conference) : undefined,
       order: typeof item.order === 'number' ? item.order : Number(item.order ?? 999),
       email: item.email ? String(item.email) : undefined,
     }));
 
-  return {
-    hcomp: normalizeList(Array.isArray(payload?.hcomp) ? payload.hcomp : []),
-    ci: normalizeList(Array.isArray(payload?.ci) ? payload.ci : []),
-  };
+  const items = Array.isArray(payload?.organizers)
+    ? payload.organizers
+    : Array.isArray(payload?.hcomp)
+      ? payload.hcomp
+      : [];
+
+  return normalizeList(items);
 }
 
 async function fetchJson(url: string) {

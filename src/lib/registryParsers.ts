@@ -56,12 +56,6 @@ export type SponsorTierRow = {
 export type TopicSection = {
   category: string;
   items: string[];
-  conference: string;
-};
-
-export type ConferenceTopicBriefs = {
-  hcomp: string;
-  ci: string;
 };
 
 export type ConferenceInfoContent = {
@@ -79,7 +73,6 @@ export type OrganizerPerson = {
   org: string;
   role: string;
   photo: string;
-  conference: string;
   email: string;
   order?: number;
 };
@@ -117,13 +110,6 @@ export function getPageBlocks(entry: RegistryEntry | null) {
 
 function sortByText(a: string, b: string) {
   return a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' });
-}
-
-function normalizeConferenceBucket(value: string) {
-  const normalized = value.trim().toLowerCase();
-  if (normalized.includes('hcomp')) return 'hcomp';
-  if (normalized.includes('ci')) return 'ci';
-  return 'other';
 }
 
 export function parseDeadlines(records: DatabaseRecord[]) {
@@ -223,56 +209,25 @@ export function parseProgram(records: DatabaseRecord[]) {
 }
 
 export function parseTopicSections(records: DatabaseRecord[]) {
-  const grouped = {
-    hcomp: [] as TopicSection[],
-    ci: [] as TopicSection[],
-  };
-
-  for (const record of records) {
-    const category = getStringField(record, ['name', 'title', 'category']);
-    const items = getStringListField(record, ['topic', 'topics', 'item', 'items']);
-    const conference = getStringField(record, ['conference']);
-
-    if (!category && items.length === 0) continue;
-
-    const section = {
-      category,
-      items,
-      conference,
-    } satisfies TopicSection;
-
-    const bucket = normalizeConferenceBucket(conference);
-    if (bucket === 'hcomp') grouped.hcomp.push(section);
-    if (bucket === 'ci') grouped.ci.push(section);
-  }
-
-  return grouped;
+  return records
+    .map((record) => ({
+      category: getStringField(record, ['name', 'title', 'category']),
+      items: getStringListField(record, ['topic', 'topics', 'item', 'items']),
+    }))
+    .filter((section) => section.category || section.items.length > 0);
 }
 
-export function parseConferenceTopicBriefs(records: DatabaseRecord[]): ConferenceTopicBriefs {
-  const briefs: ConferenceTopicBriefs = {
-    hcomp: '',
-    ci: '',
-  };
-
+export function parseConferenceTopicBriefs(records: DatabaseRecord[]) {
   for (const record of records) {
-    const conference = getStringField(record, ['conference']);
     const brief = getStringField(record, [
       'brief_topic_of_interests',
       'brief topic of interests',
       'brief_topic_of_interest',
       'brief topic of interest',
     ]);
-
-    if (!conference || !brief) continue;
-
-    const bucket = normalizeConferenceBucket(conference);
-    if (bucket === 'hcomp' || bucket === 'ci') {
-      briefs[bucket] = brief;
-    }
+    if (brief) return brief;
   }
-
-  return briefs;
+  return '';
 }
 
 export function parseConferenceInfoContent(records: DatabaseRecord[]): ConferenceInfoContent {
@@ -303,32 +258,11 @@ export function parseConferenceInfoContent(records: DatabaseRecord[]): Conferenc
 }
 
 export function parseOrganizers(records: DatabaseRecord[]) {
-  const groups = { hcomp: [] as OrganizerPerson[], ci: [] as OrganizerPerson[] };
-
-  for (const record of records) {
-    const name = getStringField(record, ['name']);
-    if (!name) continue;
-
-    const person = {
-      id: record.id,
-      name,
-      org: getStringField(record, ['organization', 'org']),
-      role: getStringField(record, ['role']),
-      photo: getStringField(record, ['photos', 'photo', 'image']),
-      conference: getStringField(record, ['conference']),
-      email: getStringField(record, ['email', 'e-mail', 'mail']),
-      order: Number(getStringField(record, ['order'])) || 999,
-    };
-
-    const conference = person.conference.toLowerCase();
-    if (conference.includes('ci')) groups.ci.push(person);
-    if (conference.includes('hcomp')) groups.hcomp.push(person);
-  }
-
-  groups.hcomp.sort((a, b) => sortByText(`${a.role}-${a.name}`, `${b.role}-${b.name}`));
-  groups.ci.sort((a, b) => sortByText(`${a.role}-${a.name}`, `${b.role}-${b.name}`));
-
-  return groups;
+  return parseOrganizerPeople(records).sort((a, b) => {
+    const orderCompare = (a.order ?? 999) - (b.order ?? 999);
+    if (orderCompare !== 0) return orderCompare;
+    return sortByText(`${a.role}-${a.name}`, `${b.role}-${b.name}`);
+  });
 }
 
 export function parseOrganizerPeople(records: DatabaseRecord[]) {
@@ -343,7 +277,6 @@ export function parseOrganizerPeople(records: DatabaseRecord[]) {
         org: getStringField(record, ['organization', 'org']),
         role: getStringField(record, ['role']),
         photo: getStringField(record, ['photos', 'photo', 'image']),
-        conference: getStringField(record, ['conference']),
         email: getStringField(record, ['email', 'e-mail', 'mail']),
         order: Number(getStringField(record, ['order'])) || 999,
       } satisfies OrganizerPerson;
@@ -434,7 +367,6 @@ export type PastMeetingRecord = {
   website: string;
   proceedings: string;
   bestPaperAward: string;
-  conference: string;
 };
 
 export function parsePastMeetings(records: DatabaseRecord[]) {
@@ -451,17 +383,12 @@ export function parsePastMeetings(records: DatabaseRecord[]) {
         website: getStringField(record, ['website', 'url', 'link']),
         proceedings: getStringField(record, ['proceedings', 'proceeding', 'proceedings url']),
         bestPaperAward: getStringField(record, ['best paper award', 'best paper', 'award']),
-        conference: getStringField(record, ['conference']),
       };
     })
     .filter(Boolean) as PastMeetingRecord[];
 
   all.sort((a, b) => b.year - a.year);
-
-  const hcomp = all.filter((m) => m.conference.toLowerCase().includes('hcomp'));
-  const ci = all.filter((m) => m.conference.toLowerCase().includes('ci'));
-
-  return { hcomp, ci };
+  return all;
 }
 
 export type PastReportRecord = {
