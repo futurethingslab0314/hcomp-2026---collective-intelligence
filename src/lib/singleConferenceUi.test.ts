@@ -55,3 +55,18 @@ test('secondary submission pages stay implemented but hidden from the tabs', () 
   assert.match(submissionSource, /activeTab === 'dc'/);
   assert.match(submissionSource, /activeTab === 'crowdcamp'/);
 });
+
+test('submission pages select organizers by paper, poster, and demo roles', () => {
+  const submissionStart = appSource.indexOf('function SubmissionSection(');
+  const submissionEnd = appSource.indexOf('\nfunction ProgramSection(', submissionStart);
+  const submissionSource = appSource.slice(submissionStart, submissionEnd);
+
+  assert.match(
+    submissionSource,
+    /const paperOrganizers = organizerPeople\.filter\(\(person\) => roleIncludes\(person\.role, \['paper'\]\)\)/,
+  );
+  assert.match(
+    submissionSource,
+    /const posterOrganizers = organizerPeople\.filter\(\(person\) => roleIncludes\(person\.role, \['poster', 'demo'\]\)\)/,
+  );
+});

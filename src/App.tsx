@@ -1527,8 +1527,8 @@ function SubmissionSection({
     ),
   );
   const submissionDeadlines = importantDateRecords.length > 0 ? importantDateRecords : deadlines;
-  const paperOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['program']));
-  const posterOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['posters and demos', 'poster and demos']));
+  const paperOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['paper']));
+  const posterOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['poster', 'demo']));
   const dcOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['doctoral consortium']));
   const workshopOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['workshops']));
   const crowdcampOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['crowdcamp']));
