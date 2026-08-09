@@ -1513,7 +1513,7 @@ function SubmissionSection({
   const [activeTab, setActiveTab] = useState<'general' | 'papers' | 'posters' | 'dc' | 'workshops' | 'crowdcamp' | 'dates'>('general');
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const generalInstructionBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'general instructions'));
-  const papersAndTalksBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'papers and talks'));
+  const papersBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'papers'));
   const postersAndDemosBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'poster and demos'));
   const doctoralConsortiumBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'doctoral consortium'));
   const workshopsBlocks = getPageBlocks(getRegistryEntry(registryContent, 'call for participation', 'workshops'));
@@ -1536,11 +1536,9 @@ function SubmissionSection({
   const tabs = [
     { id: 'general', label: 'Instructions' },
     { id: 'dates', label: 'Important Dates' },
-    { id: 'papers', label: 'Papers and Talks' },
+    { id: 'papers', label: 'Papers' },
     { id: 'posters', label: 'Posters and Demos' },
-    { id: 'dc', label: 'Doctoral Consortium' },
     { id: 'workshops', label: 'Workshops' },
-    { id: 'crowdcamp', label: 'CrowdCamp' },
   ];
 
   const currentTabLabel = tabs.find(t => t.id === activeTab)?.label;
@@ -1785,14 +1783,14 @@ function SubmissionSection({
           {activeTab === 'papers' && (
             <section className="space-y-12">
               <div className="flex items-center gap-4">
-                <h3 className="text-3xl font-display font-bold text-white">Call for Papers and Talks</h3>
+                <h3 className="text-3xl font-display font-bold text-white">Call for Papers</h3>
                 <div className="h-px flex-1 bg-white/10" />
               </div>
 
-              {papersAndTalksBlocks.length > 0 ? (
+              {papersBlocks.length > 0 ? (
                 <div className="space-y-12">
                   <div className="max-w-5xl">
-                    <NotionContentRenderer blocks={papersAndTalksBlocks} />
+                    <NotionContentRenderer blocks={papersBlocks} />
                   </div>
                   <OrganizerMiniGrid title="Program Chairs and Organizers" people={paperOrganizers} accentClass="text-brand-purple" conferenceName={conferenceName} conferenceYear={conferenceYear} />
                 </div>
