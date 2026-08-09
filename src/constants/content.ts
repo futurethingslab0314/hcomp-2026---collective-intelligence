@@ -126,18 +126,7 @@ export const CONFERENCE_CONTENT = {
     },
     chairs: [
       { event: "HCOMP 2026", role: "General Chair", name: "Ting-Hao 'Kenneth' Huang", org: "Penn State University" }
-    ],
-    conference: {
-      title: "Human-AI Complementarity and Alignment (HCOMP)",
-      description: "ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment.",
-      details: "HCOMP focuses on the emerging science and practice of human-AI complementarity and alignment. As AI systems become increasingly capable, the field is expanding from studying how humans contribute to building these systems to also studying how humans and AI systems work together as complementary partners.",
-      topics: [
-        { category: "Research on human-AI complementarity", items: ["Human-AI collaboration, coordination, and co-adaptation", "Division of labor, delegation, and supervisory control", "Complementarity versus redundancy in human-AI systems", "Hybrid workflows that combine human and AI strengths", "Human-AI decision-making and problem solving", "Human-AI interaction in organizational and societal settings"] },
-        { category: "Research on human-centered alignment", items: ["Alignment in training and in use", "Trust, reliance, and calibration", "Scalable human oversight", "Steering, monitoring, and control of AI systems", "Detecting, communicating, and repairing misalignment", "Governance, accountability, and safety in human-AI systems"] },
-        { category: "Research on human contributions to AI systems", items: ["Crowdsourcing and human computation", "Human feedback, preference learning, and evaluation", "Data collection, annotation, and quality assurance", "Bias, fairness, and responsible data practices", "Human roles in the development, assessment, and governance of AI systems"] }
-      ],
-      programChairs: "Chien-Ju Ho (Washington University in St. Louis), Tianyi Li (Purdue University)"
-    }
+    ]
   },
 
   program: [
@@ -206,8 +195,8 @@ export const CONFERENCE_CONTENT = {
     imageUrl: "https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&q=80&w=2069",
     mainHall: "Main Hall",
     hotels: [
-      { name: "The Grand Horizon", distance: "0.2 miles", rate: "$249/night", discountCode: "COLLECTIVE2026" },
-      { name: "Neon Suites", distance: "0.5 miles", rate: "$189/night", discountCode: "COLLECTIVE2026" },
+      { name: "The Grand Horizon", distance: "0.2 miles", rate: "$249/night", discountCode: "HCOMP2026" },
+      { name: "Neon Suites", distance: "0.5 miles", rate: "$189/night", discountCode: "HCOMP2026" },
       { name: "The Zenith Hotel", distance: "1.2 miles", rate: "$159/night", discountCode: "ACM_HCOMP" }
     ],
     transportation: [

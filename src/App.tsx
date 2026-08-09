@@ -799,8 +799,8 @@ function PastConferenceSection({
   const hcompMeetings = dynamicMeetings && dynamicMeetings.length > 0
     ? dynamicMeetings.map(m => ({
         year: m.year,
+        name: m.name,
         location: m.location,
-        theme: '',
         website: m.website,
         proceedings: m.proceedings,
         bestPaperAward: m.bestPaperAward,
@@ -849,6 +849,7 @@ function PastConferenceSection({
               </div>
 
               <div className="space-y-2">
+                {meeting.name ? <div className="text-white font-bold text-base">{meeting.name}</div> : null}
                 <div className="flex items-center gap-2 text-white font-bold text-sm">
                   <MapPin size={12} className="text-brand-teal" />
                   {meeting.location}
@@ -1126,12 +1127,6 @@ function AboutLandingSection({
               borderClass="border-brand-teal/20"
               bgClass="bg-brand-teal/10"
             />
-          </div>
-
-          {/* Description Row T1 */}
-          <div className="p-8 md:p-16 border-t border-white/10 bg-white/5 flex flex-col gap-6">
-            <p className="text-base md:text-lg font-bold text-white/90 leading-snug">{about.conference.description}</p>
-            <p className="text-sm text-white/50 leading-relaxed font-light">{about.conference.details}</p>
           </div>
 
           {/* Topics Row T1 */}
