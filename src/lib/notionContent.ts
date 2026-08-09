@@ -64,9 +64,29 @@ export type RegistryEntry =
     };
 
 export type RegistryContent = Record<string, Record<string, RegistryEntry>>;
+export type RegistryVisibility = Record<string, Record<string, boolean>>;
 
 export function normalizeKey(value: string) {
   return value.trim().toLowerCase().replace(/[\s/]+/g, '_');
+}
+
+export function isRegistrySectionEnabled(
+  visibility: RegistryVisibility | null,
+  pageKey: string,
+  sectionKey: string,
+) {
+  return visibility?.[normalizeKey(pageKey)]?.[normalizeKey(sectionKey)] !== false;
+}
+
+export function isRegistryPageEnabled(
+  visibility: RegistryVisibility | null,
+  pageKeys: string[],
+) {
+  if (!visibility) return true;
+  const states = pageKeys.flatMap((pageKey) =>
+    Object.values(visibility[normalizeKey(pageKey)] ?? {}),
+  );
+  return states.length === 0 || states.some(Boolean);
 }
 
 export function extractNotionId(value: string) {

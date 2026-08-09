@@ -244,6 +244,26 @@ async function resolveRegistryEntry(page: any): Promise<RegistryEntry | null> {
 export default async function handler(_req: any, res: any) {
   try {
     const pages = await queryDatabase('NOTION_REGISTRY_DATABASE_ID');
+    if (String(_req?.query?.visibility_only ?? '') === '1') {
+      const visibility: Record<string, Record<string, boolean>> = {};
+
+      for (const page of pages) {
+        const pageKeys = splitRegistryPageKeys(getPlainText(page.properties, 'page_key'));
+        const sectionKey = normalizeKey(getPlainText(page.properties, 'section_key'));
+        if (!sectionKey) continue;
+        const enabled = page.properties?.enabled
+          ? getCheckboxValue(page.properties, 'enabled')
+          : true;
+
+        for (const pageKey of pageKeys) {
+          visibility[pageKey] ??= {};
+          visibility[pageKey][sectionKey] = enabled;
+        }
+      }
+
+      json(res, 200, { visibility });
+      return;
+    }
     const rawPageKeys = typeof _req?.query?.page_keys === 'string' ? _req.query.page_keys : '';
     const requestedPageKeys = rawPageKeys
       .split(',')

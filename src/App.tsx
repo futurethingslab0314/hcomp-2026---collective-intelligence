@@ -21,7 +21,8 @@ import NotionContentRenderer from './components/NotionContentRenderer';
 import { CONFERENCE_CONTENT } from './constants/content';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
-import { fetchOrganizers, fetchRegistryContent, type Organizer, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
+import { fetchOrganizers, fetchRegistryContent, fetchRegistryVisibility, type Organizer, type ProgramDay, type RegistryContent, type RegistryVisibility } from './lib/conferenceApi';
+import { isRegistryPageEnabled, isRegistrySectionEnabled } from './lib/notionContent';
 import {
   getDatabaseRecords,
   getRegistryEntryFromPages,
@@ -122,6 +123,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAwardYear, setSelectedAwardYear] = useState<number | null>(null);
   const [registryContent, setRegistryContent] = useState<RegistryContent | null>(null);
+  const [registryVisibility, setRegistryVisibility] = useState<RegistryVisibility | null>(null);
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(registryContent);
   const conferenceName = conferenceInfoContent.heroName.trim() || CONFERENCE_CONTENT.hero.title;
@@ -129,6 +131,18 @@ export default function App() {
   const shortConferenceYear = conferenceYear.slice(-2);
 
   // Apply colors to CSS variables
+  useEffect(() => {
+    let isMounted = true;
+    void fetchRegistryVisibility()
+      .then((visibility) => {
+        if (isMounted) setRegistryVisibility(visibility);
+      })
+      .catch((error) => console.error('Failed to load registry visibility from Notion API.', error));
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -206,12 +220,19 @@ export default function App() {
   }, [conferenceName, conferenceYear]);
 
   const sections = [
-    { id: 'submission', label: 'Call for Participation', icon: FileText },
-    { id: 'venue', label: 'Attend', icon: MapPin },
-    { id: 'program', label: 'Program', icon: Calendar },
-    { id: 'organization', label: 'Organizers', icon: Users },
-    { id: 'sponsors', label: 'Sponsors', icon: ShieldCheck },
-  ];
+    { id: 'submission', label: 'Call for Participation', icon: FileText, pageKeys: ['call for participation'] },
+    { id: 'venue', label: 'Attend', icon: MapPin, pageKeys: ['attend page'] },
+    { id: 'program', label: 'Program', icon: Calendar, pageKeys: ['program page'] },
+    { id: 'organization', label: 'Organizers', icon: Users, pageKeys: ['organizer page', 'organizers page'] },
+    { id: 'sponsors', label: 'Sponsors', icon: ShieldCheck, pageKeys: ['sponsor page'] },
+  ].filter((section) => isRegistryPageEnabled(registryVisibility, section.pageKeys));
+  const visibleSectionIds = sections.map((section) => section.id).join(',');
+
+  useEffect(() => {
+    if (activeSection !== 'home' && !sections.some((section) => section.id === activeSection)) {
+      setActiveSection('home');
+    }
+  }, [activeSection, registryVisibility, visibleSectionIds]);
 
   return (
     <div className="relative min-h-screen font-sans selection:bg-brand-blue/30 selection:text-white">
@@ -321,7 +342,7 @@ export default function App() {
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
-            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} registryVisibility={registryVisibility} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
@@ -1507,11 +1528,13 @@ function CodeOfConductSection({
 
 function SubmissionSection({
   registryContent,
+  registryVisibility,
   isLoadingRegistry,
   conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
+  registryVisibility: RegistryVisibility | null;
   isLoadingRegistry: boolean;
   conferenceName: string;
   conferenceYear: string;
@@ -1543,12 +1566,19 @@ function SubmissionSection({
   const crowdcampOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['crowdcamp']));
 
   const tabs = [
-    { id: 'general', label: 'Instructions' },
-    { id: 'dates', label: 'Important Dates' },
-    { id: 'papers', label: 'Papers' },
-    { id: 'posters', label: 'Posters and Demos' },
-    { id: 'workshops', label: 'Workshops' },
-  ];
+    { id: 'general', label: 'Instructions', pageKey: 'call for participation', sectionKey: 'general instructions' },
+    { id: 'dates', label: 'Important Dates', pageKey: 'home page', sectionKey: 'important dates' },
+    { id: 'papers', label: 'Papers', pageKey: 'call for participation', sectionKey: 'papers' },
+    { id: 'posters', label: 'Posters and Demos', pageKey: 'call for participation', sectionKey: 'poster and demos' },
+    { id: 'workshops', label: 'Workshops', pageKey: 'call for participation', sectionKey: 'workshops' },
+  ].filter((tab) => isRegistrySectionEnabled(registryVisibility, tab.pageKey, tab.sectionKey));
+  const visibleTabIds = tabs.map((tab) => tab.id).join(',');
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === activeTab) && tabs[0]) {
+      setActiveTab(tabs[0].id as typeof activeTab);
+    }
+  }, [activeTab, registryVisibility, visibleTabIds]);
 
   const currentTabLabel = tabs.find(t => t.id === activeTab)?.label;
   const topicBriefParagraphs = topicBriefs

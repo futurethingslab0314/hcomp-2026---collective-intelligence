@@ -1,7 +1,12 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { coalesceDocumentBlocks, extractNotionId } from './notionContent';
+import {
+  coalesceDocumentBlocks,
+  extractNotionId,
+  isRegistryPageEnabled,
+  isRegistrySectionEnabled,
+} from './notionContent';
 
 test('extractNotionId returns raw IDs from slugged page references', () => {
   assert.equal(
@@ -13,6 +18,20 @@ test('extractNotionId returns raw IDs from slugged page references', () => {
     '35ca7f1b413c80dbb890fd84191ffa09',
   );
   assert.equal(extractNotionId('35ba7f1b413c802aad53d85c1128b724'), '35ba7f1b413c802aad53d85c1128b724');
+});
+
+test('registry visibility hides only explicitly disabled sections and pages', () => {
+  const visibility = {
+    call_for_participation: { papers: false, workshops: true },
+    program_page: { program: false },
+  };
+
+  assert.equal(isRegistrySectionEnabled(visibility, 'call for participation', 'papers'), false);
+  assert.equal(isRegistrySectionEnabled(visibility, 'call for participation', 'workshops'), true);
+  assert.equal(isRegistrySectionEnabled(visibility, 'attend page', 'venue'), true);
+  assert.equal(isRegistryPageEnabled(visibility, ['program page']), false);
+  assert.equal(isRegistryPageEnabled(visibility, ['call for participation']), true);
+  assert.equal(isRegistryPageEnabled(null, ['program page']), true);
 });
 
 test('coalesceDocumentBlocks merges adjacent list items into list groups', () => {
