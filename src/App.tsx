@@ -11,7 +11,6 @@ import {
   Clock,
   ShieldCheck,
   Network,
-  BookOpen,
   Info,
   ArrowUp,
   ChevronDown,
@@ -210,10 +209,8 @@ export default function App() {
     { id: 'submission', label: 'Call for Participation', icon: FileText },
     { id: 'venue', label: 'Attend', icon: MapPin },
     { id: 'program', label: 'Program', icon: Calendar },
-    { id: 'coc', label: 'Code of Conduct', icon: ShieldCheck },
     { id: 'organization', label: 'Organizers', icon: Users },
     { id: 'sponsors', label: 'Sponsors', icon: ShieldCheck },
-    { id: 'past-meetings', label: 'Past Meeting', icon: BookOpen },
   ];
 
   return (
