@@ -96,3 +96,17 @@ test('unchecked registry entries drive navigation visibility without loading sou
   assert.match(appSource, /isRegistryPageEnabled\(registryVisibility, section\.pageKeys\)/);
   assert.match(appSource, /isRegistrySectionEnabled\(registryVisibility, tab\.pageKey, tab\.sectionKey\)/);
 });
+
+test('the Home page renders four Notion-managed organization logo groups at the bottom', () => {
+  const aboutStart = appSource.indexOf('function AboutLandingSection(');
+  const aboutEnd = appSource.indexOf('\nfunction SponsorsSection(', aboutStart);
+  const aboutSource = appSource.slice(aboutStart, aboutEnd);
+
+  assert.match(aboutSource, /getRegistryEntry\(_registryContent, 'home page', 'logo area'\)/);
+  assert.match(aboutSource, /isRegistrySectionEnabled\(registryVisibility, 'home page', 'logo area'\)/);
+  assert.match(aboutSource, /<HomeOrganizationLogos items=\{organizationLogos\}/);
+  assert.match(appSource, /\['main organizers', '主辦單位'\]/);
+  assert.match(appSource, /\['co-organizers', '共同主辦'\]/);
+  assert.match(appSource, /\['supporting organizations', '協辦單位'\]/i);
+  assert.match(appSource, /\['sponsors', '贊助單位'\]/i);
+});

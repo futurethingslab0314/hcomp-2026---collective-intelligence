@@ -6,6 +6,7 @@ import {
   parseConferenceInfoContent,
   parseConferenceTopicBriefs,
   parseOrganizers,
+  parseOrganizationLogos,
   parsePastMeetings,
   parseTopicSections,
 } from './registryParsers';
@@ -20,6 +21,19 @@ function conferenceInfoRecord(year: string | number): DatabaseRecord {
 
 test('parseConferenceInfoContent reads a numeric year from the main record', () => {
   assert.equal(parseConferenceInfoContent([conferenceInfoRecord(2027)]).year, '2027');
+});
+
+test('parseOrganizationLogos reads the homepage Logo database fields', () => {
+  assert.deepEqual(
+    parseOrganizationLogos([
+      record({ 'Logo Name': 'National Example University', area: 'main organizers', logo: ['https://example.com/logo.png'] }, 'logo'),
+      record({ 'Logo Name': 'Example Sponsor', area: 'Sponsors', logo: 'https://example.com/sponsor.svg' }, 'sponsor'),
+    ]),
+    [
+      { id: 'logo', name: 'National Example University', area: 'main organizers', logo: 'https://example.com/logo.png' },
+      { id: 'sponsor', name: 'Example Sponsor', area: 'Sponsors', logo: 'https://example.com/sponsor.svg' },
+    ],
+  );
 });
 
 test('parseConferenceInfoContent reads a string year from the main record', () => {

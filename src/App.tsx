@@ -34,6 +34,7 @@ import {
   parseConferenceTopicBriefs,
   parseDeadlines,
   parseOrganizerPeople,
+  parseOrganizationLogos,
   parsePastMeetings,
   parsePastReports,
   parseBestPaperAwardText,
@@ -46,6 +47,7 @@ import {
   type PastMeetingRecord,
   type PastReportRecord,
   type TopicSection,
+  type OrganizationLogoItem,
 } from './lib/registryParsers';
 
 type SectionId = 'home' | 'submission' | 'program' | 'organization' | 'past-meetings' | 'venue' | 'sponsors' | 'coc';
@@ -341,7 +343,7 @@ export default function App() {
             exit={{ opacity: 0, y: -20 }}
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
-            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} registryVisibility={registryVisibility} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} registryVisibility={registryVisibility} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
@@ -647,6 +649,58 @@ function GeneralChairsFeature({
         </div>
       ))}
     </div>
+  );
+}
+
+function HomeOrganizationLogos({ items }: { items: OrganizationLogoItem[] }) {
+  const groups: Array<[string, string]> = [
+    ['main organizers', '主辦單位'],
+    ['co-organizers', '共同主辦'],
+    ['supporting organizations', '協辦單位'],
+    ['sponsors', '贊助單位'],
+  ];
+  const visibleGroups = groups
+    .map(([area, label]) => ({
+      area,
+      label,
+      items: items.filter((item) => item.area.trim().toLowerCase() === area),
+    }))
+    .filter((group) => group.items.length > 0);
+
+  if (visibleGroups.length === 0) return null;
+
+  return (
+    <section className="snap-start flex-none px-6 py-24 md:py-32">
+      <div className="max-w-6xl mx-auto space-y-16">
+        <div className="space-y-4 text-center">
+          <div className="text-brand-teal text-xs font-bold uppercase tracking-[0.3em]">Partners</div>
+          <h2 className="text-4xl md:text-5xl font-display font-bold">合作單位</h2>
+        </div>
+        <div className="space-y-14">
+          {visibleGroups.map((group) => (
+            <div key={group.area} className="space-y-6">
+              <div className="flex items-center gap-4">
+                <h3 className="text-lg md:text-xl font-bold whitespace-nowrap">{group.label}</h3>
+                <div className="h-px flex-1 bg-white/15" />
+              </div>
+              <div className="flex flex-wrap justify-center gap-4 md:gap-6">
+                {group.items.map((item) => (
+                  <figure
+                    key={item.id}
+                    className="w-[160px] sm:w-[190px] min-h-[120px] rounded-2xl bg-white p-5 flex flex-col items-center justify-center gap-3 shadow-xl shadow-black/10"
+                  >
+                    <img src={item.logo} alt={item.name} className="w-full h-14 object-contain" />
+                    <figcaption className="text-center text-xs font-semibold leading-snug text-black/70">
+                      {item.name}
+                    </figcaption>
+                  </figure>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -961,16 +1015,23 @@ function PastConferenceSection({
 
 function AboutLandingSection({
   registryContent: _registryContent,
+  registryVisibility,
   conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
+  registryVisibility: RegistryVisibility | null;
   conferenceName: string;
   conferenceYear: string;
 }) {
   const { hero, venueInfo, about } = CONFERENCE_CONTENT;
   const topicSections = getTopicSectionsFromRegistry(_registryContent);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(_registryContent);
+  const organizationLogos = isRegistrySectionEnabled(registryVisibility, 'home page', 'logo area')
+    ? parseOrganizationLogos(
+        getDatabaseRecords(getRegistryEntry(_registryContent, 'home page', 'logo area')),
+      )
+    : [];
   const [homeOrganizers, setHomeOrganizers] = useState<Organizer[]>([]);
   const [isHeroLoading, setIsHeroLoading] = useState(true);
   const sectionHeight = `calc(100dvh - 12rem)`; // Adjusting height to better fit between header and footer
@@ -1205,6 +1266,8 @@ function AboutLandingSection({
         {/* Snap Cap: Helps with snapping and prevents rebound at the very bottom */}
         <div className="snap-end h-1 w-full" />
       </div>
+
+      <HomeOrganizationLogos items={organizationLogos} />
     </div>
   );
 }
