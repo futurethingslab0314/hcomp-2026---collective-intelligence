@@ -579,43 +579,52 @@ function OrganizerConferenceColumn({
   );
 }
 
-function GeneralChairFeature({
-  person,
+function GeneralChairsFeature({
+  people,
   fallbackName,
   fallbackOrg,
   accentClass,
   borderClass,
   bgClass,
 }: {
-  person?: Organizer;
+  people: Organizer[];
   fallbackName: string;
   fallbackOrg: string;
   accentClass: string;
   borderClass: string;
   bgClass: string;
 }) {
-  const name = person?.name || fallbackName;
-  const org = person?.org || fallbackOrg;
-  const photo = person?.photo;
+  const displayPeople = people.length > 0
+    ? people
+    : [{ name: fallbackName, org: fallbackOrg, role: 'General Chair' }];
 
   return (
-    <div className="p-0 h-full flex items-center gap-5">
-      {photo ? (
-        <img
-          src={photo}
-          alt={name}
-          className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] object-cover border ${borderClass} shadow-xl`}
-        />
-      ) : (
-        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] border ${borderClass} ${bgClass} flex items-center justify-center text-2xl font-bold ${accentClass}`}>
-          {name[0]}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+      {displayPeople.map((person, index) => (
+        <div key={person.id ?? `${person.name}-${index}`} className="p-0 h-full flex items-center gap-5">
+          {person.photo ? (
+            <img
+              src={person.photo}
+              alt={person.name}
+              className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] object-cover border ${borderClass} shadow-xl`}
+            />
+          ) : (
+            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] border ${borderClass} ${bgClass} flex items-center justify-center text-2xl font-bold ${accentClass}`}>
+              {person.name[0]}
+            </div>
+          )}
+          <div className="space-y-1 min-w-0">
+            <div className={`text-xs uppercase tracking-widest font-bold ${accentClass}`}>{person.role || 'General Chair'}</div>
+            <div className="text-xl md:text-2xl font-bold leading-tight">{person.name}</div>
+            <div className="text-sm text-white/40 italic font-serif">{person.org}</div>
+            {person.email ? (
+              <a href={`mailto:${person.email}`} className="inline-flex text-xs text-brand-blue hover:underline break-all">
+                {person.email}
+              </a>
+            ) : null}
+          </div>
         </div>
-      )}
-      <div className="space-y-1">
-        <div className={`text-xs uppercase tracking-widest font-bold ${accentClass}`}>General Chair</div>
-        <div className="text-xl md:text-2xl font-bold leading-tight">{name}</div>
-        <div className="text-sm text-white/40 italic font-serif">{org}</div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -952,7 +961,7 @@ function AboutLandingSection({
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
   const heroTitle = conferenceInfoContent.heroName || hero.title;
   const heroSubtitle = conferenceInfoContent.heroLongName || withConferenceYear(hero.subtitle, conferenceYear);
-  const generalChair = homeOrganizers.find((person) => person.role.toLowerCase().includes('general chair'));
+  const generalChairs = homeOrganizers.filter((person) => roleIncludes(person.role, ['general']));
   const fallbackGeneralChair = about.chairs.find((chair) => chair.event.includes('HCOMP')) ?? about.chairs[0];
 
   // Loop for the hero animation
@@ -1116,8 +1125,8 @@ function AboutLandingSection({
           
           {/* Chair Row T1 */}
           <div className="px-8 md:px-16 py-12 md:py-16 border-t border-white/10 bg-white/5">
-            <GeneralChairFeature
-              person={generalChair}
+            <GeneralChairsFeature
+              people={generalChairs}
               fallbackName={fallbackGeneralChair?.name ?? 'To be announced'}
               fallbackOrg={fallbackGeneralChair?.org ?? ''}
               accentClass="text-brand-teal"

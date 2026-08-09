@@ -70,3 +70,20 @@ test('submission pages select organizers by paper, poster, and demo roles', () =
     /const posterOrganizers = organizerPeople\.filter\(\(person\) => roleIncludes\(person\.role, \['poster', 'demo'\]\)\)/,
   );
 });
+
+test('the current conference panel renders every organizer with a general role', () => {
+  const aboutStart = appSource.indexOf('function AboutLandingSection(');
+  const aboutEnd = appSource.indexOf('\nfunction SponsorsSection(', aboutStart);
+  const aboutSource = appSource.slice(aboutStart, aboutEnd);
+  const featureStart = appSource.indexOf('function GeneralChairsFeature(');
+  const featureEnd = appSource.indexOf('\nfunction PastMeetingsSection(', featureStart);
+  const featureSource = appSource.slice(featureStart, featureEnd);
+
+  assert.match(
+    aboutSource,
+    /const generalChairs = homeOrganizers\.filter\(\(person\) => roleIncludes\(person\.role, \['general'\]\)\)/,
+  );
+  assert.match(aboutSource, /<GeneralChairsFeature\s+people=\{generalChairs\}/);
+  assert.match(featureSource, /displayPeople\.map\(\(person, index\) =>/);
+  assert.match(featureSource, /grid-cols-1 md:grid-cols-2/);
+});
