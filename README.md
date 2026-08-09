@@ -125,6 +125,7 @@ Registry 是整個模板的資料路由表。每一列代表網站的一個 sect
 | 網站區域 | `page_key` | `section_key` | 建議類型 |
 |---|---|---|---|
 | 首頁 conference 名稱、年份、介紹 | `home page` | `conference info` | database |
+| 首頁底部合作單位 Logos | `home page` | `logo area` | database |
 | 首頁／CFP Topics | `home page` 或 `call for participation` | `topics of interest` | database |
 | CFP Important Dates | `home page` | `important dates` | database |
 | CFP Instructions 內文 | `call for participation` | `general instructions` | page |
@@ -243,6 +244,18 @@ Registry 是整個模板的資料路由表。每一列代表網站的一個 sect
 | `description` | Rich text | 說明 |
 
 ### Sponsor Logos
+
+首頁底部的合作單位 Logo 使用獨立的 `home page` / `logo area` database：
+
+| Property | 建議類型 | 用途 |
+|---|---|---|
+| `Logo Name` | Title | 單位名稱 |
+| `area` | Select | `main organizers`、`co-organizers`、`Supporting Organizations` 或 `Sponsors` |
+| `logo` | URL 或 Files & media | Logo 圖片；若有多張只使用第一張 |
+
+四種 area 依序顯示為主辦單位、共同主辦、協辦單位與贊助單位。空白群組不顯示；Registry `enabled` 未勾選時整個 Logo 區塊隱藏。
+
+Sponsor 頁面本身的 Sponsor Logos 使用另一個 `sponsor page` / `sponsor logo` database：
 
 | Property | 建議類型 | 用途 |
 |---|---|---|

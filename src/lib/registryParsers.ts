@@ -1,5 +1,5 @@
 import type { DatabaseRecord, RegistryContent, RegistryEntry } from './conferenceApi';
-import { getStringField, getStringListField, normalizeKey } from './notionContent';
+import { getRecordField, getStringField, getStringListField, normalizeKey } from './notionContent';
 
 export type DeadlineItem = {
   date: string;
@@ -43,6 +43,13 @@ export type CommunityPhotoItem = {
   caption: string;
   image: string;
   url: string;
+};
+
+export type OrganizationLogoItem = {
+  id: string;
+  name: string;
+  area: string;
+  logo: string;
 };
 
 export type SponsorTierRow = {
@@ -305,6 +312,26 @@ export function parseCommunityPhotos(records: DatabaseRecord[]) {
       url: getStringField(record, ['url', 'link', 'website']),
     }))
     .filter((item) => item.image || item.name || item.caption);
+}
+
+export function parseOrganizationLogos(records: DatabaseRecord[]): OrganizationLogoItem[] {
+  return records
+    .map((record) => {
+      const logoValue = getRecordField(record, ['logo']);
+      const logo = Array.isArray(logoValue)
+        ? String(logoValue[0] ?? '')
+        : typeof logoValue === 'string'
+          ? logoValue
+          : '';
+
+      return {
+        id: record.id,
+        name: getStringField(record, ['logo name', 'name', 'title']),
+        area: getStringField(record, ['area', 'group', 'category']),
+        logo,
+      };
+    })
+    .filter((item) => item.name && item.logo);
 }
 
 export function parseSponsorTierRows(records: DatabaseRecord[]) {
