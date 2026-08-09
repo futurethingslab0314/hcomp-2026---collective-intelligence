@@ -21,7 +21,8 @@ import NotionContentRenderer from './components/NotionContentRenderer';
 import { CONFERENCE_CONTENT } from './constants/content';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
-import { fetchOrganizers, fetchRegistryContent, type Organizer, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
+import { fetchOrganizers, fetchRegistryContent, fetchRegistryVisibility, type Organizer, type ProgramDay, type RegistryContent, type RegistryVisibility } from './lib/conferenceApi';
+import { isRegistryPageEnabled, isRegistrySectionEnabled } from './lib/notionContent';
 import {
   getDatabaseRecords,
   getRegistryEntryFromPages,
@@ -122,6 +123,7 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [selectedAwardYear, setSelectedAwardYear] = useState<number | null>(null);
   const [registryContent, setRegistryContent] = useState<RegistryContent | null>(null);
+  const [registryVisibility, setRegistryVisibility] = useState<RegistryVisibility | null>(null);
   const [isLoadingRegistry, setIsLoadingRegistry] = useState(true);
   const conferenceInfoContent = getConferenceInfoContentFromRegistry(registryContent);
   const conferenceName = conferenceInfoContent.heroName.trim() || CONFERENCE_CONTENT.hero.title;
@@ -129,6 +131,18 @@ export default function App() {
   const shortConferenceYear = conferenceYear.slice(-2);
 
   // Apply colors to CSS variables
+  useEffect(() => {
+    let isMounted = true;
+    void fetchRegistryVisibility()
+      .then((visibility) => {
+        if (isMounted) setRegistryVisibility(visibility);
+      })
+      .catch((error) => console.error('Failed to load registry visibility from Notion API.', error));
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   useEffect(() => {
     const handleScroll = () => {
       setIsScrolled(window.scrollY > 20);
@@ -206,12 +220,19 @@ export default function App() {
   }, [conferenceName, conferenceYear]);
 
   const sections = [
-    { id: 'submission', label: 'Call for Participation', icon: FileText },
-    { id: 'venue', label: 'Attend', icon: MapPin },
-    { id: 'program', label: 'Program', icon: Calendar },
-    { id: 'organization', label: 'Organizers', icon: Users },
-    { id: 'sponsors', label: 'Sponsors', icon: ShieldCheck },
-  ];
+    { id: 'submission', label: 'Call for Participation', icon: FileText, pageKeys: ['call for participation'] },
+    { id: 'venue', label: 'Attend', icon: MapPin, pageKeys: ['attend page'] },
+    { id: 'program', label: 'Program', icon: Calendar, pageKeys: ['program page'] },
+    { id: 'organization', label: 'Organizers', icon: Users, pageKeys: ['organizer page', 'organizers page'] },
+    { id: 'sponsors', label: 'Sponsors', icon: ShieldCheck, pageKeys: ['sponsor page'] },
+  ].filter((section) => isRegistryPageEnabled(registryVisibility, section.pageKeys));
+  const visibleSectionIds = sections.map((section) => section.id).join(',');
+
+  useEffect(() => {
+    if (activeSection !== 'home' && !sections.some((section) => section.id === activeSection)) {
+      setActiveSection('home');
+    }
+  }, [activeSection, registryVisibility, visibleSectionIds]);
 
   return (
     <div className="relative min-h-screen font-sans selection:bg-brand-blue/30 selection:text-white">
@@ -321,7 +342,7 @@ export default function App() {
             transition={{ duration: 0.5, ease: "easeOut" }}
           >
             {activeSection === 'home' && <AboutLandingSection registryContent={registryContent} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
-            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
+            {activeSection === 'submission' && <SubmissionSection registryContent={registryContent} registryVisibility={registryVisibility} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'venue' && <VenueSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
             {activeSection === 'program' && <ProgramSection registryContent={registryContent} isLoadingRegistry={isLoadingRegistry} />}
             {activeSection === 'organization' && <OrgSection isLoadingRegistry={isLoadingRegistry} conferenceName={conferenceName} conferenceYear={conferenceYear} />}
@@ -579,43 +600,52 @@ function OrganizerConferenceColumn({
   );
 }
 
-function GeneralChairFeature({
-  person,
+function GeneralChairsFeature({
+  people,
   fallbackName,
   fallbackOrg,
   accentClass,
   borderClass,
   bgClass,
 }: {
-  person?: Organizer;
+  people: Organizer[];
   fallbackName: string;
   fallbackOrg: string;
   accentClass: string;
   borderClass: string;
   bgClass: string;
 }) {
-  const name = person?.name || fallbackName;
-  const org = person?.org || fallbackOrg;
-  const photo = person?.photo;
+  const displayPeople = people.length > 0
+    ? people
+    : [{ name: fallbackName, org: fallbackOrg, role: 'General Chair' }];
 
   return (
-    <div className="p-0 h-full flex items-center gap-5">
-      {photo ? (
-        <img
-          src={photo}
-          alt={name}
-          className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] object-cover border ${borderClass} shadow-xl`}
-        />
-      ) : (
-        <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] border ${borderClass} ${bgClass} flex items-center justify-center text-2xl font-bold ${accentClass}`}>
-          {name[0]}
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 md:gap-10">
+      {displayPeople.map((person, index) => (
+        <div key={person.id ?? `${person.name}-${index}`} className="p-0 h-full flex items-center gap-5">
+          {person.photo ? (
+            <img
+              src={person.photo}
+              alt={person.name}
+              className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] object-cover border ${borderClass} shadow-xl`}
+            />
+          ) : (
+            <div className={`w-20 h-20 md:w-24 md:h-24 rounded-[1.75rem] border ${borderClass} ${bgClass} flex items-center justify-center text-2xl font-bold ${accentClass}`}>
+              {person.name[0]}
+            </div>
+          )}
+          <div className="space-y-1 min-w-0">
+            <div className={`text-xs uppercase tracking-widest font-bold ${accentClass}`}>{person.role || 'General Chair'}</div>
+            <div className="text-xl md:text-2xl font-bold leading-tight">{person.name}</div>
+            <div className="text-sm text-white/40 italic font-serif">{person.org}</div>
+            {person.email ? (
+              <a href={`mailto:${person.email}`} className="inline-flex text-xs text-brand-blue hover:underline break-all">
+                {person.email}
+              </a>
+            ) : null}
+          </div>
         </div>
-      )}
-      <div className="space-y-1">
-        <div className={`text-xs uppercase tracking-widest font-bold ${accentClass}`}>General Chair</div>
-        <div className="text-xl md:text-2xl font-bold leading-tight">{name}</div>
-        <div className="text-sm text-white/40 italic font-serif">{org}</div>
-      </div>
+      ))}
     </div>
   );
 }
@@ -952,7 +982,7 @@ function AboutLandingSection({
   const venueInfoText = conferenceInfoContent.venueInfo || venueInfo;
   const heroTitle = conferenceInfoContent.heroName || hero.title;
   const heroSubtitle = conferenceInfoContent.heroLongName || withConferenceYear(hero.subtitle, conferenceYear);
-  const generalChair = homeOrganizers.find((person) => person.role.toLowerCase().includes('general chair'));
+  const generalChairs = homeOrganizers.filter((person) => roleIncludes(person.role, ['general']));
   const fallbackGeneralChair = about.chairs.find((chair) => chair.event.includes('HCOMP')) ?? about.chairs[0];
 
   // Loop for the hero animation
@@ -1116,8 +1146,8 @@ function AboutLandingSection({
           
           {/* Chair Row T1 */}
           <div className="px-8 md:px-16 py-12 md:py-16 border-t border-white/10 bg-white/5">
-            <GeneralChairFeature
-              person={generalChair}
+            <GeneralChairsFeature
+              people={generalChairs}
               fallbackName={fallbackGeneralChair?.name ?? 'To be announced'}
               fallbackOrg={fallbackGeneralChair?.org ?? ''}
               accentClass="text-brand-teal"
@@ -1498,11 +1528,13 @@ function CodeOfConductSection({
 
 function SubmissionSection({
   registryContent,
+  registryVisibility,
   isLoadingRegistry,
   conferenceName,
   conferenceYear,
 }: {
   registryContent: RegistryContent | null;
+  registryVisibility: RegistryVisibility | null;
   isLoadingRegistry: boolean;
   conferenceName: string;
   conferenceYear: string;
@@ -1527,19 +1559,26 @@ function SubmissionSection({
     ),
   );
   const submissionDeadlines = importantDateRecords.length > 0 ? importantDateRecords : deadlines;
-  const paperOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['program']));
-  const posterOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['posters and demos', 'poster and demos']));
+  const paperOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['paper']));
+  const posterOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['poster', 'demo']));
   const dcOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['doctoral consortium']));
   const workshopOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['workshops']));
   const crowdcampOrganizers = organizerPeople.filter((person) => roleIncludes(person.role, ['crowdcamp']));
 
   const tabs = [
-    { id: 'general', label: 'Instructions' },
-    { id: 'dates', label: 'Important Dates' },
-    { id: 'papers', label: 'Papers' },
-    { id: 'posters', label: 'Posters and Demos' },
-    { id: 'workshops', label: 'Workshops' },
-  ];
+    { id: 'general', label: 'Instructions', pageKey: 'call for participation', sectionKey: 'general instructions' },
+    { id: 'dates', label: 'Important Dates', pageKey: 'home page', sectionKey: 'important dates' },
+    { id: 'papers', label: 'Papers', pageKey: 'call for participation', sectionKey: 'papers' },
+    { id: 'posters', label: 'Posters and Demos', pageKey: 'call for participation', sectionKey: 'poster and demos' },
+    { id: 'workshops', label: 'Workshops', pageKey: 'call for participation', sectionKey: 'workshops' },
+  ].filter((tab) => isRegistrySectionEnabled(registryVisibility, tab.pageKey, tab.sectionKey));
+  const visibleTabIds = tabs.map((tab) => tab.id).join(',');
+
+  useEffect(() => {
+    if (!tabs.some((tab) => tab.id === activeTab) && tabs[0]) {
+      setActiveTab(tabs[0].id as typeof activeTab);
+    }
+  }, [activeTab, registryVisibility, visibleTabIds]);
 
   const currentTabLabel = tabs.find(t => t.id === activeTab)?.label;
   const topicBriefParagraphs = topicBriefs

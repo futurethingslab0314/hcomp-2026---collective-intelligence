@@ -86,6 +86,7 @@ export type RegistryEntry =
     };
 
 export type RegistryContent = Record<string, Record<string, RegistryEntry>>;
+export type RegistryVisibility = Record<string, Record<string, boolean>>;
 
 function normalizeProgramDays(days: any[]): ProgramDay[] {
   return days.map((day, index) => ({
@@ -168,4 +169,9 @@ export async function fetchRegistryContent(pageKeys?: string[]) {
     : '';
   const payload = await fetchJson(`/api/content${query}`);
   return (payload?.registry ?? {}) as RegistryContent;
+}
+
+export async function fetchRegistryVisibility() {
+  const payload = await fetchJson('/api/content?visibility_only=1');
+  return (payload?.visibility ?? {}) as RegistryVisibility;
 }
