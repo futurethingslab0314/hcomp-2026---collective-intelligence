@@ -1189,15 +1189,15 @@ function AboutLandingSection({
 
           {/* Footer Row T1 */}
           <div className="p-8 md:p-16 border-t border-white/10 bg-white/5">
-            <button 
-              onClick={() => {
-                window.dispatchEvent(new CustomEvent('switch-section', { detail: { id: 'past-meetings' } }));
-              }}
+            <a
+              href="https://taiwanchi.org/"
+              target="_blank"
+              rel="noopener noreferrer"
               className="inline-flex items-center gap-2 px-6 py-2 rounded-full border-[#ffe7a6]/30 text-[#ffe7a6] text-xs font-bold hover:bg-[#ffe7a6] hover:text-black transition-all group cursor-pointer"
             >
               View Past {conferenceName}
               <ChevronRight size={14} className="group-hover:translate-x-1 transition-transform" />
-            </button>
+            </a>
           </div>
 
         </div>
