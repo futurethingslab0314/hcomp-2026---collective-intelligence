@@ -12,3 +12,46 @@ test('the current conference section does not render HCOMP-only fallback details
 test('single-conference fallback constants do not retain the joint-conference discount code', () => {
   assert.doesNotMatch(fallbackContentSource, new RegExp(['COLLECTIVE', '2026'].join('')));
 });
+
+test('secondary pages stay hidden from the shared navigation menu', () => {
+  const menuStart = appSource.indexOf('const sections = [');
+  const menuEnd = appSource.indexOf('];', menuStart);
+
+  assert.notEqual(menuStart, -1);
+  assert.notEqual(menuEnd, -1);
+
+  const menuSource = appSource.slice(menuStart, menuEnd);
+  assert.doesNotMatch(menuSource, /id: 'coc'/);
+  assert.doesNotMatch(menuSource, /id: 'past-meetings'/);
+});
+
+test('the papers submission tab uses the Papers label and Notion section key', () => {
+  const submissionStart = appSource.indexOf('function SubmissionSection(');
+  const submissionEnd = appSource.indexOf('\nfunction ProgramSection(', submissionStart);
+
+  assert.notEqual(submissionStart, -1);
+  assert.notEqual(submissionEnd, -1);
+
+  const submissionSource = appSource.slice(submissionStart, submissionEnd);
+  assert.match(
+    submissionSource,
+    /getRegistryEntry\(registryContent, 'call for participation', 'papers'\)/,
+  );
+  assert.match(submissionSource, /\{ id: 'papers', label: 'Papers' \}/);
+  assert.match(submissionSource, />Call for Papers<\/h3>/);
+  assert.doesNotMatch(submissionSource, /papers and talks/i);
+});
+
+test('secondary submission pages stay implemented but hidden from the tabs', () => {
+  const submissionStart = appSource.indexOf('function SubmissionSection(');
+  const submissionEnd = appSource.indexOf('\nfunction ProgramSection(', submissionStart);
+  const submissionSource = appSource.slice(submissionStart, submissionEnd);
+  const tabsStart = submissionSource.indexOf('const tabs = [');
+  const tabsEnd = submissionSource.indexOf('];', tabsStart);
+  const tabsSource = submissionSource.slice(tabsStart, tabsEnd);
+
+  assert.doesNotMatch(tabsSource, /id: 'dc'/);
+  assert.doesNotMatch(tabsSource, /id: 'crowdcamp'/);
+  assert.match(submissionSource, /activeTab === 'dc'/);
+  assert.match(submissionSource, /activeTab === 'crowdcamp'/);
+});
