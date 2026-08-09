@@ -20,7 +20,6 @@ import {
 import BackgroundCanvas from './components/BackgroundCanvas';
 import NotionContentRenderer from './components/NotionContentRenderer';
 import { CONFERENCE_CONTENT } from './constants/content';
-import { CONFERENCE_PHOTOS } from './constants/assets';
 import { THEME_COLORS } from './constants/theme';
 import LoadingOverlay from './components/LoadingOverlay';
 import { fetchOrganizers, fetchRegistryContent, type Organizer, type ProgramDay, type RegistryContent } from './lib/conferenceApi';
@@ -1131,8 +1130,8 @@ function AboutLandingSection({
 
           {/* Description Row T1 */}
           <div className="p-8 md:p-16 border-t border-white/10 bg-white/5 flex flex-col gap-6">
-            <p className="text-base md:text-lg font-bold text-white/90 leading-snug">{about.hcomp.description}</p>
-            <p className="text-sm text-white/50 leading-relaxed font-light">{about.hcomp.details}</p>
+            <p className="text-base md:text-lg font-bold text-white/90 leading-snug">{about.conference.description}</p>
+            <p className="text-sm text-white/50 leading-relaxed font-light">{about.conference.details}</p>
           </div>
 
           {/* Topics Row T1 */}

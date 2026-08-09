@@ -155,23 +155,6 @@ export const PAST_HCOMP_MEETINGS: PastMeeting[] = [
   }
 ];
 
-export const PAST_CI_MEETINGS = [
-  { year: 2026, location: "Virginia Tech, Washington, DC", website: "https://ci.acm.org/2026/" },
-  { year: 2025, location: "UC San Diego, La Jolla", website: "https://ci.acm.org/2025/" },
-  { year: 2024, location: "Northeastern University, Boston", website: "https://ci.acm.org/2024/", notes: "full paper proceedings, extended abstracts" },
-  { year: 2023, location: "Delft University of Technology", website: "https://ci.acm.org/2023/" },
-  { year: 2022, location: "Max Planck Institute (Virtual Event)", website: "https://ci.acm.org/2022/" },
-  { year: 2021, location: "Copenhagen Business School", website: "https://ci.acm.org/2021/" },
-  { year: 2020, location: "Northeastern University", website: "https://ci.acm.org/2020/" },
-  { year: 2019, location: "Carnegie Mellon University", website: "https://ci.acm.org/2019/" },
-  { year: 2018, location: "University of Zurich Digital Society Initiative", website: "https://ci.acm.org/2018/" },
-  { year: 2017, location: "NYU Tandon", website: "https://ci.acm.org/2017/" },
-  { year: 2016, location: "NYU Stern", website: "https://ci.acm.org/2016/" },
-  { year: 2015, location: "Santa Clara", website: "https://ci.acm.org/2015/" },
-  { year: 2014, location: "MIT", website: "https://ci.acm.org/2014/" },
-  { year: 2012, location: "MIT", website: "https://ci.acm.org/2012/" },
-];
-
 export const PAST_REPORTS = [
   {
     citation: "Workshops Held at the First AAAI Conference on Human Computation and Crowdsourcing: A Report. Tatiana Josephy, Matthew Lease, Praveen Paritosh, Markus Krause, Mihai Georgescu, Michael Tjalve, and Daniela Braga. AI Magazine, 35(2), 75-78, 2014.",

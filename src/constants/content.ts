@@ -26,30 +26,30 @@ export const CONFERENCE_CONTENT = {
   ],
 
   topics: [
-    "Collective Intelligence (CI) Models & Theories",
-    "Human-AI Complementarity & Alignment (HCOMP)",
+    "Human-AI Models & Theories",
+    "Human-AI Complementarity & Alignment",
     "Wisdom of Crowds & Group Decision Making",
     "Social Computing & Team Performance",
-    "Ethics, Privacy & Accountability in CI/HCOMP",
+    "Ethics, Privacy & Accountability",
     "Citizen Science & Large-scale Coordination",
-    "Psychological & Behavioral Aspects of CI"
+    "Psychological & Behavioral Research"
   ],
 
   cfpDetails: {
     title: "Call for Papers and Talks",
-    subtitle: "The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—are intended to accommodate the different norms and requirements across the diverse fields represented in the Collective Intelligence and HCOMP communities.",
+    subtitle: "The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—accommodate the different norms and requirements across the conference's diverse research fields.",
     table: [
       {
         option: "Full papers",
-        track: "Authors select CI or HCOMP track",
+        track: "Unified conference review",
         wordCount: "6000",
         archival: "Yes; must be original research not previously published",
         review: "1 PC member coordinates 3 detailed external reviews",
-        published: "CI or HCOMP proceedings in ACM Digital Library w/ DOI"
+        published: "Conference proceedings in ACM Digital Library w/ DOI"
       },
       {
         option: "Talks (formerly “extended abstracts”)",
-        track: "Authors select CI or HCOMP track",
+        track: "Unified conference review",
         wordCount: "1500",
         archival: "No; may be based on cited prior publications",
         review: "2 PC members provide brief reviews",
@@ -59,13 +59,8 @@ export const CONFERENCE_CONTENT = {
     sections: [
       {
         title: "Submission Options",
-        content: "The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—are intended to accommodate the different norms and requirements across the diverse fields represented in the Collective Intelligence and HCOMP communities.\n\nFull papers (max 6000 words) will be assigned to a Program Committee member who will recruit 3 external reviewers and write a meta-review. Accepted full papers will be published in the archival 2026 ACM Collective Intelligence or HCOMP conference proceedings which will be available via the ACM Digital Library. These papers will be assigned individual digital object identifiers (DOIs) as citable publications.\n\nTalks (formerly “extended abstracts”) (max 1500 words) will receive short reviews by two members of the Program Committee focusing on relevance of, and enthusiasm for, the topic. Extended abstracts for accepted talks will be made available to conference participants on the 2026 CI or HCOMP websites. These abstracts will not be archived in the ACM Digital Library nor assigned individual DOIs for tracking future citations.",
-        subsections: [
-          {
-            title: "Selecting CI or HCOMP Track",
-            content: "When submitting a full paper or talk, authors will be required to select either the CI or HCOMP track. Their track selection will determine which Program Committee (PC) reviews their submission. Additionally, for accepted full papers, the track selection will determine the proceedings (CI or HCOMP) in which the paper will be published."
-          }
-        ]
+        content: "The two primary submission formats—full papers and talks (formerly called “extended abstracts”)—accommodate the different norms and requirements across the conference's diverse research fields.\n\nFull papers (max 6000 words) will be assigned to a Program Committee member who will recruit 3 external reviewers and write a meta-review. Accepted full papers will be published in the archival 2026 conference proceedings available through the ACM Digital Library and assigned individual digital object identifiers (DOIs).\n\nTalks (formerly “extended abstracts”) (max 1500 words) will receive short reviews by two members of the Program Committee focusing on relevance and enthusiasm for the topic. Extended abstracts for accepted talks will be made available to conference participants on the conference website and will not be archived in the ACM Digital Library or assigned individual DOIs.",
+        subsections: []
       },
       {
         title: "Policy & Information",
@@ -76,11 +71,11 @@ export const CONFERENCE_CONTENT = {
           },
           {
             title: "Awards",
-            content: "CI and HCOMP 2026 will each recognize one best full paper, one best talk, and one best student work (of either type). Additionally, they will recognize outstanding reviewers."
+            content: "The conference will recognize one best full paper, one best talk, and one best student work (of either type), as well as outstanding reviewers."
           },
           {
             title: "Anonymity",
-            content: "CI and HCOMP 2026 will adopt a double-blind review process. Authors must ensure their submissions are fully anonymized by removing author names, affiliations, and avoiding citing unpublished work of their own."
+            content: "The conference will adopt a double-blind review process. Authors must ensure their submissions are fully anonymized by removing author names and affiliations and by avoiding citations to their own unpublished work."
           },
           {
             title: "Double Submission Policy",
@@ -130,20 +125,9 @@ export const CONFERENCE_CONTENT = {
       content: "ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment. Our community studies and designs systems that combine the complementary strengths of human and artificial intelligence to achieve outcomes neither could achieve alone, in ways that are ethical, safe, and intentional. This research builds on a foundation established by the HCOMP community during its first decade as an AAAI conference series focused on human computation and crowdsourcing."
     },
     chairs: [
-      { event: "CI 2026", role: "General Chair", name: "Kurt Luther", org: "Virginia Tech" },
       { event: "HCOMP 2026", role: "General Chair", name: "Ting-Hao 'Kenneth' Huang", org: "Penn State University" }
     ],
-    ci: {
-      title: "Collective Intelligence (CI)",
-      description: "ACM Collective Intelligence is the premier venue for disseminating the latest research that advances the theoretical and empirical understanding of collective performance in diverse systems, whether biological, technological, or a combination.",
-      details: "CI has a transdisciplinary focus devoted to advancing the theoretical and empirical understanding of collective intelligence, broadly designed. The community does basic science on emergent collective phenomena, as well as designing and engineering systems for combining computational and human intelligence.",
-      topics: [
-        { category: "Research on collective behaviors", items: ["Crowds, flocks and swarms", "Collective emotion and polarization", "Belief formation and misinformation", "Social network formation and functioning", "Science and innovation", "Open source communities", "Organizational Studies"] },
-        { category: "Research into systems and tasks", items: ["Forecasting and decision-making", "Democracy, civics and policymaking", "Complex problem solving", "Crisis response", "Community-driven design", "Innovation contests", "Citizen science", "Discussion moderation and decision facilitation", "Computer-human collaboration (e.g. hybrid systems, LLMs)"] }
-      ],
-      programChairs: "Jason W. Burton (University of Copenhagen), Ioanna Lykourentzou (Utrecht University)"
-    },
-    hcomp: {
+    conference: {
       title: "Human-AI Complementarity and Alignment (HCOMP)",
       description: "ACM HCOMP is the premier venue for disseminating the latest research findings on human-AI complementarity and alignment.",
       details: "HCOMP focuses on the emerging science and practice of human-AI complementarity and alignment. As AI systems become increasingly capable, the field is expanding from studying how humans contribute to building these systems to also studying how humans and AI systems work together as complementary partners.",
@@ -195,24 +179,14 @@ export const CONFERENCE_CONTENT = {
     }
   ],
 
-  organization: {
-    ci: [
-      { role: "General Chair", name: "Dr. Elena Smith", org: "Collective Intelligence Lab" },
-      { role: "Program Chair", name: "Prof. Zhang Wei", org: "Neuro-Crowd Systems" },
-      { role: "Workshop Chair", name: "Sarah Jenkins", org: "Human-AI Institute" },
-      { role: "Finance Chair", name: "James Miller", org: "Tech Ethics Society" },
-      { role: "Publicity Chair", name: "Leo Rossi", org: "Interaction Design Group" },
-      { role: "Local Co-Chair", name: "Hiroshi Sato", org: "Future Cities Research" },
-    ],
-    hcomp: [
-      { role: "General Chair", name: "Prof. Thomas Clark", org: "Human-Centric Computing Dr." },
-      { role: "Program Chair", name: "Dr. Maria Garcia", org: "Global Alignment Lab" },
-      { role: "Industry Chair", name: "David Wong", org: "Nexus AI Corp" },
-      { role: "Doctoral Consortium", name: "Alice Thompson", org: "Empiric University" },
-      { role: "Sponsorship Chair", name: "Robert Klein", org: "Venture Insights" },
-      { role: "Local Co-Chair", name: "Yuki Tanaka", org: "DC Tech Hub" },
-    ]
-  },
+  organization: [
+    { role: "General Chair", name: "Prof. Thomas Clark", org: "Human-Centric Computing Dr." },
+    { role: "Program Chair", name: "Dr. Maria Garcia", org: "Global Alignment Lab" },
+    { role: "Industry Chair", name: "David Wong", org: "Nexus AI Corp" },
+    { role: "Doctoral Consortium", name: "Alice Thompson", org: "Empiric University" },
+    { role: "Sponsorship Chair", name: "Robert Klein", org: "Venture Insights" },
+    { role: "Local Co-Chair", name: "Yuki Tanaka", org: "DC Tech Hub" },
+  ],
 
   venue: {
     locations: [
